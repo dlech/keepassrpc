@@ -1,0 +1,24 @@
+Source: keepassrpc
+Section: utils
+Priority: optional
+Maintainer: David Lechner <david@lechnology.com>
+Build-Depends: debhelper (>= 8.0.0)
+Build-Depends-Indep: cli-common-dev (>= 0.8),
+                     mono-mcs,
+                     keepass2 (>= 2.19),
+                     keepass2-plugin-dev
+Standards-Version: 3.9.4
+Homepage: http://keefox.org
+Vcs-Git: https://github.com/dlech/keepassrpc.git
+Vcs-Browser: https://github.com/dlech/keepassrpc
+
+Package: keepass2-plugin-rpc
+Architecture: all
+Depends: keepass2 (>= 2.19),
+         mono-dmcs,
+         libmono-system-management4.0-cil,
+         libmono-system-numerics4.0-cil,
+         ${misc:Depends}
+Description: Remote Procedure Call (RPC) plugin for KeePass 2.x
+ Provides RPC interface for other programs to access KeePass. Used by KeeFox
+ extension for Firefox/Thunderbird.

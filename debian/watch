@@ -1,0 +1,5 @@
+# See uscan(1) for format
+
+version=3
+opts="uversionmangle=s/(\d)((a|b)\d)/$1~$2/" \
+https://github.com/kee-org/keepassrpc/tags .*/v?(\d[\d\.ab]+)\.tar\.gz

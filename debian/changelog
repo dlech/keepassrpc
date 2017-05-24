@@ -1,0 +1,5 @@
+keepassrpc (1.7.0~b1-0) trusty; urgency=high
+
+  * Initial release
+
+ -- David Lechner <david@lechnology.com>  Wed, 24 May 2017 14:29:18 -0500

@@ -1,0 +1,90 @@
+## Description: add some description
+## Origin/Author: add some origin or author
+## Bug: bug URL
+--- a/KeePassRPC/KeePassRPC.csproj
++++ b/KeePassRPC/KeePassRPC.csproj
+@@ -1,6 +1,9 @@
+ ﻿<?xml version="1.0" encoding="utf-8"?>
+ <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+   <PropertyGroup>
++    <KeePassPluginDevToolsPath>/usr/lib/keepass2-plugin-dev/</KeePassPluginDevToolsPath>
++  </PropertyGroup>
++  <PropertyGroup>
+     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+     <ProductVersion>9.0.30729</ProductVersion>
+@@ -102,10 +105,10 @@
+       <SpecificVersion>False</SpecificVersion>
+       <HintPath>Jayrock.Json.dll</HintPath>
+     </Reference>
+-    <Reference Include="KeePass, Version=2.1.8.29009, Culture=neutral, PublicKeyToken=7952fc8ece49a093, processorArchitecture=MSIL">
++    <Reference Include="KeePass">
+       <SpecificVersion>False</SpecificVersion>
+       <ExecutableExtension>.exe</ExecutableExtension>
+-      <HintPath>..\..\..\..\Program Files (x86)\KeePass Password Safe 2 DEV\KeePass.exe</HintPath>
++      <HintPath>/usr/lib/keepass2/KeePass.exe</HintPath>
+     </Reference>
+     <Reference Include="System" />
+     <Reference Include="System.Configuration" />
+@@ -198,33 +201,6 @@
+     <Compile Include="Utils.cs" />
+   </ItemGroup>
+   <ItemGroup>
+-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+-      <Visible>False</Visible>
+-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+-      <Install>false</Install>
+-    </BootstrapperPackage>
+-    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+-      <Visible>False</Visible>
+-      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+-      <Install>true</Install>
+-    </BootstrapperPackage>
+-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+-      <Visible>False</Visible>
+-      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+-      <Install>false</Install>
+-    </BootstrapperPackage>
+-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+-      <Visible>False</Visible>
+-      <ProductName>.NET Framework 3.5</ProductName>
+-      <Install>false</Install>
+-    </BootstrapperPackage>
+-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+-      <Visible>False</Visible>
+-      <ProductName>.NET Framework 3.5 SP1</ProductName>
+-      <Install>false</Install>
+-    </BootstrapperPackage>
+-  </ItemGroup>
+-  <ItemGroup>
+     <EmbeddedResource Include="Forms\AuthForm.resx">
+       <DependentUpon>AuthForm.cs</DependentUpon>
+     </EmbeddedResource>
+@@ -275,13 +251,14 @@
+     <None Include="Resources\KeeFoxIcon.bmp" />
+   </ItemGroup>
+   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+-       Other similar extension points exist, see Microsoft.Common.targets.
+-  <Target Name="BeforeBuild">
+-  </Target>
+-  <Target Name="AfterBuild">
++  <Import Project="$(KeePassPluginDevToolsPath)Plgx.targets" />
++  <Target Name="AfterBuild" Condition="'$(Configuration)' == 'ReleasePLGX'">
++    <CallTarget Targets="BuildPlgx" />
++    <Delete Files="$(OutDir)KeePassRPC.Mono.Security.dll" />
++    <Delete Files="$(OutDir)Jayrock.dll;$(OutDir)Jayrock.Json.dll" />
++    <Delete Files="$(OutDir)Fleck2.dll" />
++    <Delete Files="$(OutDir)$(AssemblyName)$(TargetExt)" />
+   </Target>
+-  -->
+   <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+     <PostBuildEvent>
+       echo POSTBUILDSTEP for $(ProjectName)
+@@ -388,4 +365,4 @@
+       :BuildEventOK
+       echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
+   </PropertyGroup>
+-</Project>
+\ No newline at end of file
++</Project>
