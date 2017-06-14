@@ -1,3 +1,9 @@
+keepassrpc (1.7.0-1) trusty; urgency=medium
+
+  * Change minimum keepass2 version to 2.34
+
+ -- David Lechner <david@lechnology.com>  Wed, 14 Jun 2017 14:48:42 -0500
+
 keepassrpc (1.7.0~b1-0) trusty; urgency=high
 
   * Initial release
