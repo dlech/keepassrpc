@@ -81,7 +81,7 @@
    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
      <PostBuildEvent>
        echo POSTBUILDSTEP for $(ProjectName)
-@@ -388,4 +365,4 @@
+@@ -385,4 +362,4 @@
        :BuildEventOK
        echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
    </PropertyGroup>
