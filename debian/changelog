@@ -1,3 +1,10 @@
+keepassrpc (1.7.2-1) trusty; urgency=medium
+
+  * Enable non-KeeFox clients to be signaled
+  * Enable signed update checks
+
+ -- David Lechner <david@lechnology.com>  Sun, 03 Sep 2017 13:17:22 -0500
+
 keepassrpc (1.7.0-1) trusty; urgency=medium
 
   * Change minimum keepass2 version to 2.34
