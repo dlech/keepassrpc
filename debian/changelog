@@ -1,4 +1,4 @@
-keepassrpc (1.7.3.1-1) trusty; urgency=medium
+keepassrpc (1.7.3.1~trusty1) trusty; urgency=medium
 
   * Gracefully handle attempts to signal unauthorised connections
 
