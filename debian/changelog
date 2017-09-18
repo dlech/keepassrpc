@@ -1,3 +1,9 @@
+keepassrpc (1.7.3.1-1) trusty; urgency=medium
+
+  * Gracefully handle attempts to signal unauthorised connections
+
+ -- David Lechner <david@lechnology.com>  Mon, 18 Sep 2017 15:05:53 -0500
+
 keepassrpc (1.7.2-1) trusty; urgency=medium
 
   * Enable non-KeeFox clients to be signaled
