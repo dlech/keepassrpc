@@ -1,3 +1,30 @@
+keepassrpc (1.8.0~xenial1) xenial; urgency=medium
+
+  * Works with KeePass 2.39
+  * Complete support for KeePass placeholders in any form field
+  * Enhanced entry URL matching control
+  * Improved entry matching accuracy and speed
+  * Extra protection against targeted social engineering attacks
+  * KeeFox branding replaced with Kee
+  * You can now remove the “Kee” group from your database if you’re not using it
+    (and move the still-useful “Kee Generated passwords” group to whichever part
+    of your database that you want)
+  * New JSONRPC API endpoints for retrieving even entries that have no URL:
+    GetAllEntries / GetAllChildEntries
+  * Replaced mentions of the “start group” with “home group”
+  * Prevent a crash when Page number on form field editor is invalid (#20)
+  * Fixed a bug where the username displayed in a Kee search result may be
+    different to the one that gets filled in when that entry is auto-filled
+    (only in the relatively rare case when there are multiple usernames
+    configured on the single entry and one has no Kee configuration)
+  * Various other UI improvements: Better sizes for some dialogs, better layout
+    for others, clearer instructions and less jargon in others
+  * Various code quality improvements: Disposing more objects (thanks to
+    @manuc66); lots of new automated tests; removed all the obsolete KeePass API
+    calls that we can
+
+ -- David Lechner <david@lechnology.com>  Sun, 13 May 2018 14:29:37 -0500
+
 keepassrpc (1.7.3.1~xenial1) xenial; urgency=medium
 
   * Gracefully handle attempts to signal unauthorised connections
