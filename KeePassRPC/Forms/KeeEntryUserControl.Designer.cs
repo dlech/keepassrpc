@@ -1,6 +1,6 @@
 ﻿namespace KeePassRPC.Forms
 {
-    partial class KeeFoxEntryUserControl
+    partial class KeeEntryUserControl
     {
         /// <summary> 
         /// Required designer variable.
@@ -35,8 +35,8 @@
             this.label4 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.textBoxKeeFoxPriority = new System.Windows.Forms.TextBox();
-            this.checkBoxHideFromKeeFox = new System.Windows.Forms.CheckBox();
+            this.textBoxKeePriority = new System.Windows.Forms.TextBox();
+            this.checkBoxHideFromKee = new System.Windows.Forms.CheckBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.buttonFieldEdit = new System.Windows.Forms.Button();
             this.buttonFieldDelete = new System.Windows.Forms.Button();
@@ -57,25 +57,25 @@
             this.columnHeaderType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.textBoxKeeFoxRealm = new System.Windows.Forms.TextBox();
+            this.textBoxKeeRealm = new System.Windows.Forms.TextBox();
             this.labelRealm = new System.Windows.Forms.Label();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.groupBox4 = new System.Windows.Forms.GroupBox();
+            this.radioButton3 = new System.Windows.Forms.RadioButton();
+            this.radioButton2 = new System.Windows.Forms.RadioButton();
+            this.radioButton1 = new System.Windows.Forms.RadioButton();
             this.label2 = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.toolTipRealm = new System.Windows.Forms.ToolTip(this.components);
-            this.label5 = new System.Windows.Forms.Label();
-            this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.radioButton1 = new System.Windows.Forms.RadioButton();
-            this.radioButton2 = new System.Windows.Forms.RadioButton();
-            this.radioButton3 = new System.Windows.Forms.RadioButton();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
-            this.tabPage3.SuspendLayout();
             this.groupBox4.SuspendLayout();
+            this.tabPage3.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBox1
@@ -95,7 +95,7 @@
             // 
             this.comboBoxAutoFill.FormattingEnabled = true;
             this.comboBoxAutoFill.Items.AddRange(new object[] {
-            "Use KeeFox setting",
+            "Use Kee setting",
             "Never",
             "Always"});
             this.comboBoxAutoFill.Location = new System.Drawing.Point(75, 20);
@@ -107,7 +107,7 @@
             // 
             this.comboBoxAutoSubmit.FormattingEnabled = true;
             this.comboBoxAutoSubmit.Items.AddRange(new object[] {
-            "Use KeeFox setting",
+            "Use Kee setting",
             "Never",
             "Always"});
             this.comboBoxAutoSubmit.Location = new System.Drawing.Point(75, 55);
@@ -142,22 +142,22 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "Priority override (e.g. 1 - 100)";
             // 
-            // textBoxKeeFoxPriority
+            // textBoxKeePriority
             // 
-            this.textBoxKeeFoxPriority.Location = new System.Drawing.Point(160, 74);
-            this.textBoxKeeFoxPriority.Name = "textBoxKeeFoxPriority";
-            this.textBoxKeeFoxPriority.Size = new System.Drawing.Size(39, 20);
-            this.textBoxKeeFoxPriority.TabIndex = 2;
+            this.textBoxKeePriority.Location = new System.Drawing.Point(160, 74);
+            this.textBoxKeePriority.Name = "textBoxKeePriority";
+            this.textBoxKeePriority.Size = new System.Drawing.Size(39, 20);
+            this.textBoxKeePriority.TabIndex = 2;
             // 
-            // checkBoxHideFromKeeFox
+            // checkBoxHideFromKee
             // 
-            this.checkBoxHideFromKeeFox.AutoSize = true;
-            this.checkBoxHideFromKeeFox.Location = new System.Drawing.Point(24, 19);
-            this.checkBoxHideFromKeeFox.Name = "checkBoxHideFromKeeFox";
-            this.checkBoxHideFromKeeFox.Size = new System.Drawing.Size(155, 17);
-            this.checkBoxHideFromKeeFox.TabIndex = 1;
-            this.checkBoxHideFromKeeFox.Text = "Hide this entry from KeeFox";
-            this.checkBoxHideFromKeeFox.UseVisualStyleBackColor = true;
+            this.checkBoxHideFromKee.AutoSize = true;
+            this.checkBoxHideFromKee.Location = new System.Drawing.Point(24, 19);
+            this.checkBoxHideFromKee.Name = "checkBoxHideFromKee";
+            this.checkBoxHideFromKee.Size = new System.Drawing.Size(138, 17);
+            this.checkBoxHideFromKee.TabIndex = 1;
+            this.checkBoxHideFromKee.Text = "Hide this entry from Kee";
+            this.checkBoxHideFromKee.UseVisualStyleBackColor = true;
             // 
             // groupBox2
             // 
@@ -214,6 +214,7 @@
             this.listView2.UseCompatibleStateImageBehavior = false;
             this.listView2.View = System.Windows.Forms.View.Details;
             this.listView2.SelectedIndexChanged += new System.EventHandler(this.listView2_SelectedIndexChanged);
+            this.listView2.KeyUp += new System.Windows.Forms.KeyEventHandler(this.listView2_KeyUp);
             this.listView2.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listView2_MouseDoubleClick);
             // 
             // columnHeaderFName
@@ -256,8 +257,10 @@
             this.groupBox3.Controls.Add(this.buttonURLAdd);
             this.groupBox3.Controls.Add(this.listView1);
             this.groupBox3.Location = new System.Drawing.Point(6, 173);
+            this.groupBox3.Margin = new System.Windows.Forms.Padding(3, 3, 3, 1);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(443, 141);
+            this.groupBox3.Padding = new System.Windows.Forms.Padding(3, 3, 3, 1);
+            this.groupBox3.Size = new System.Drawing.Size(443, 136);
             this.groupBox3.TabIndex = 0;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Additional URLs";
@@ -307,11 +310,12 @@
             this.listView1.MultiSelect = false;
             this.listView1.Name = "listView1";
             this.listView1.ShowItemToolTips = true;
-            this.listView1.Size = new System.Drawing.Size(366, 119);
+            this.listView1.Size = new System.Drawing.Size(366, 112);
             this.listView1.TabIndex = 3;
             this.listView1.UseCompatibleStateImageBehavior = false;
             this.listView1.View = System.Windows.Forms.View.Details;
             this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
+            this.listView1.KeyUp += new System.Windows.Forms.KeyEventHandler(this.listView1_KeyUp);
             this.listView1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseDoubleClick);
             // 
             // columnHeaderValue
@@ -336,34 +340,34 @@
             this.tabControl1.Location = new System.Drawing.Point(5, 3);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(463, 343);
+            this.tabControl1.Size = new System.Drawing.Size(463, 338);
             this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
             this.tabControl1.TabIndex = 3;
             // 
             // tabPage1
             // 
-            this.tabPage1.Controls.Add(this.textBoxKeeFoxRealm);
+            this.tabPage1.Controls.Add(this.textBoxKeeRealm);
             this.tabPage1.Controls.Add(this.labelRealm);
             this.tabPage1.Controls.Add(this.groupBox1);
-            this.tabPage1.Controls.Add(this.checkBoxHideFromKeeFox);
+            this.tabPage1.Controls.Add(this.checkBoxHideFromKee);
             this.tabPage1.Controls.Add(this.label1);
-            this.tabPage1.Controls.Add(this.textBoxKeeFoxPriority);
+            this.tabPage1.Controls.Add(this.textBoxKeePriority);
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(455, 317);
+            this.tabPage1.Size = new System.Drawing.Size(455, 312);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "General";
-            this.tabPage1.ToolTipText = "Basic KeeFox settings for this entry";
+            this.tabPage1.ToolTipText = "Basic Kee settings for this entry";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
-            // textBoxKeeFoxRealm
+            // textBoxKeeRealm
             // 
-            this.textBoxKeeFoxRealm.Location = new System.Drawing.Point(115, 128);
-            this.textBoxKeeFoxRealm.Name = "textBoxKeeFoxRealm";
-            this.textBoxKeeFoxRealm.Size = new System.Drawing.Size(307, 20);
-            this.textBoxKeeFoxRealm.TabIndex = 4;
-            this.textBoxKeeFoxRealm.TextChanged += new System.EventHandler(this.textBoxKeeFoxRealm_TextChanged);
+            this.textBoxKeeRealm.Location = new System.Drawing.Point(115, 128);
+            this.textBoxKeeRealm.Name = "textBoxKeeRealm";
+            this.textBoxKeeRealm.Size = new System.Drawing.Size(307, 20);
+            this.textBoxKeeRealm.TabIndex = 4;
+            this.textBoxKeeRealm.TextChanged += new System.EventHandler(this.textBoxKeeRealm_TextChanged);
             // 
             // labelRealm
             // 
@@ -379,43 +383,14 @@
             this.tabPage2.Controls.Add(this.groupBox4);
             this.tabPage2.Controls.Add(this.groupBox3);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
+            this.tabPage2.Margin = new System.Windows.Forms.Padding(3, 3, 3, 0);
             this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(455, 317);
+            this.tabPage2.Padding = new System.Windows.Forms.Padding(3, 3, 3, 0);
+            this.tabPage2.Size = new System.Drawing.Size(455, 312);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "URLs";
             this.tabPage2.ToolTipText = "Which URLs should this entry match or be blocked from matching?";
             this.tabPage2.UseVisualStyleBackColor = true;
-            // 
-            // label2
-            // 
-            this.label2.Location = new System.Drawing.Point(25, 126);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(410, 31);
-            this.label2.TabIndex = 2;
-            this.label2.Text = "You may want to choose Exact when you want to limit form filling to only certain " +
-    "website pages, perhaps by using additional URLs below.";
-            // 
-            // tabPage3
-            // 
-            this.tabPage3.Controls.Add(this.groupBox2);
-            this.tabPage3.Location = new System.Drawing.Point(4, 22);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage3.Size = new System.Drawing.Size(459, 321);
-            this.tabPage3.TabIndex = 2;
-            this.tabPage3.Text = "Form fields";
-            this.tabPage3.ToolTipText = "Define the web page form fields this entry applies to";
-            this.tabPage3.UseVisualStyleBackColor = true;
-            // 
-            // label5
-            // 
-            this.label5.Location = new System.Drawing.Point(6, 17);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(433, 31);
-            this.label5.TabIndex = 3;
-            this.label5.Text = "When more than one entry matches, KeeFox prioritises more accurately matching ent" +
-    "ries. You can exclude this entry from matching at all in some cases.";
             // 
             // groupBox4
             // 
@@ -431,32 +406,6 @@
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Minimum URL match accuracy";
             // 
-            // radioButton1
-            // 
-            this.radioButton1.AutoSize = true;
-            this.radioButton1.Location = new System.Drawing.Point(8, 51);
-            this.radioButton1.Name = "radioButton1";
-            this.radioButton1.Size = new System.Drawing.Size(355, 17);
-            this.radioButton1.TabIndex = 4;
-            this.radioButton1.TabStop = true;
-            this.radioButton1.Text = "Domain: The URL only needs to be part of the same domain to match.";
-            this.toolTipRealm.SetToolTip(this.radioButton1, "This is the default behaviour.");
-            this.radioButton1.UseVisualStyleBackColor = true;
-            this.radioButton1.CheckedChanged += new System.EventHandler(this.radioButton1_CheckedChanged);
-            // 
-            // radioButton2
-            // 
-            this.radioButton2.AutoSize = true;
-            this.radioButton2.Location = new System.Drawing.Point(8, 74);
-            this.radioButton2.Name = "radioButton2";
-            this.radioButton2.Size = new System.Drawing.Size(415, 17);
-            this.radioButton2.TabIndex = 5;
-            this.radioButton2.TabStop = true;
-            this.radioButton2.Text = "Hostname: The URL must match the hostname (domain and subdomains) and port.";
-            this.toolTipRealm.SetToolTip(this.radioButton2, "This was the default behaviour in KeeFox 1.4 and lower.");
-            this.radioButton2.UseVisualStyleBackColor = true;
-            this.radioButton2.CheckedChanged += new System.EventHandler(this.radioButton2_CheckedChanged);
-            // 
             // radioButton3
             // 
             this.radioButton3.AutoSize = true;
@@ -469,15 +418,69 @@
             this.radioButton3.UseVisualStyleBackColor = true;
             this.radioButton3.CheckedChanged += new System.EventHandler(this.radioButton3_CheckedChanged);
             // 
-            // KeeFoxEntryUserControl
+            // radioButton2
+            // 
+            this.radioButton2.AutoSize = true;
+            this.radioButton2.Location = new System.Drawing.Point(8, 74);
+            this.radioButton2.Name = "radioButton2";
+            this.radioButton2.Size = new System.Drawing.Size(415, 17);
+            this.radioButton2.TabIndex = 5;
+            this.radioButton2.TabStop = true;
+            this.radioButton2.Text = "Hostname: The URL must match the hostname (domain and subdomains) and port.";
+            this.radioButton2.UseVisualStyleBackColor = true;
+            this.radioButton2.CheckedChanged += new System.EventHandler(this.radioButton2_CheckedChanged);
+            // 
+            // radioButton1
+            // 
+            this.radioButton1.AutoSize = true;
+            this.radioButton1.Location = new System.Drawing.Point(8, 51);
+            this.radioButton1.Name = "radioButton1";
+            this.radioButton1.Size = new System.Drawing.Size(355, 17);
+            this.radioButton1.TabIndex = 4;
+            this.radioButton1.TabStop = true;
+            this.radioButton1.Text = "Domain: The URL only needs to be part of the same domain to match.";
+            this.radioButton1.UseVisualStyleBackColor = true;
+            this.radioButton1.CheckedChanged += new System.EventHandler(this.radioButton1_CheckedChanged);
+            // 
+            // label2
+            // 
+            this.label2.Location = new System.Drawing.Point(25, 126);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(410, 31);
+            this.label2.TabIndex = 2;
+            this.label2.Text = "You may want to choose Exact when you want to limit form filling to only certain " +
+    "website pages, perhaps by using additional URLs below.";
+            // 
+            // label5
+            // 
+            this.label5.Location = new System.Drawing.Point(6, 17);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(433, 31);
+            this.label5.TabIndex = 3;
+            this.label5.Text = "When more than one entry matches, Kee prioritises more accurately matching entrie" +
+    "s. You can exclude this entry from matching at all in some cases.";
+            // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.groupBox2);
+            this.tabPage3.Location = new System.Drawing.Point(4, 22);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage3.Size = new System.Drawing.Size(455, 312);
+            this.tabPage3.TabIndex = 2;
+            this.tabPage3.Text = "Form fields";
+            this.tabPage3.ToolTipText = "Define the web page form fields this entry applies to";
+            this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // KeeEntryUserControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Window;
             this.Controls.Add(this.tabControl1);
-            this.Name = "KeeFoxEntryUserControl";
-            this.Size = new System.Drawing.Size(470, 352);
-            this.Load += new System.EventHandler(this.KeeFoxEntryUserControl_Load);
+            this.Name = "KeeEntryUserControl";
+            this.Size = new System.Drawing.Size(470, 344);
+            this.Load += new System.EventHandler(this.KeeEntryUserControl_Load);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
@@ -486,9 +489,9 @@
             this.tabPage1.ResumeLayout(false);
             this.tabPage1.PerformLayout();
             this.tabPage2.ResumeLayout(false);
-            this.tabPage3.ResumeLayout(false);
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
+            this.tabPage3.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -496,9 +499,9 @@
         #endregion
 
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.CheckBox checkBoxHideFromKeeFox;
+        private System.Windows.Forms.CheckBox checkBoxHideFromKee;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox textBoxKeeFoxPriority;
+        private System.Windows.Forms.TextBox textBoxKeePriority;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.ComboBox comboBoxAutoSubmit;
@@ -525,7 +528,7 @@
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.TabPage tabPage3;
-        private System.Windows.Forms.TextBox textBoxKeeFoxRealm;
+        private System.Windows.Forms.TextBox textBoxKeeRealm;
         private System.Windows.Forms.Label labelRealm;
         private System.Windows.Forms.ToolTip toolTipRealm;
         private System.Windows.Forms.Label label2;

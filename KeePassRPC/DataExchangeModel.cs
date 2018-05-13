@@ -81,6 +81,35 @@ namespace KeePassRPC.DataExchangeModel
     public enum FormFieldType { FFTradio, FFTusername, FFTtext, FFTpassword, FFTselect, FFTcheckbox } // ..., HTML 5, etc.
     // FFTusername is special type because bultin FF supports with only username and password
 
+    public enum PlaceholderHandling { Default, Enabled, Disabled }
+
+    public enum MatchAccuracyEnum
+    {
+        // Best = Non-URL match (i.e. we matched by UUID instead)
+        // Best = Regex match (it is impossible for us to infer how
+        // accurate a regex match is in comparison with other classes
+        // of match so we always treat it as the best possible match
+        // even if the regex itself is very loose)
+        // Best = Same URL including query string
+
+        // Close = Same URL excluding query string
+
+        // HostnameAndPort = Same hostname and port
+
+        // Hostname = Same hostname (domain + subdomains)
+
+        // Domain = Same domain
+
+        // None = No match (e.g. when we are being asked to return all entries)
+
+        Best = 50,
+        Close = 40,
+        HostnameAndPort = 30,
+        Hostname = 20,
+        Domain = 10,
+        None = 0
+    } 
+
     public struct MatchAccuracy
     {
         // Best = Non-URL match (i.e. we matched by UUID instead)
@@ -100,12 +129,12 @@ namespace KeePassRPC.DataExchangeModel
 
         // None = No match (e.g. when we are being asked to return all entries)
 
-        public static readonly int Best = 50;
-        public static readonly int Close = 40;
-        public static readonly int HostnameAndPort = 30;
-        public static readonly int Hostname = 20;
-        public static readonly int Domain = 10;
-        public static readonly int None = 0;
+        public static readonly int Best = (int)MatchAccuracyEnum.Best;
+        public static readonly int Close = (int)MatchAccuracyEnum.Close;
+        public static readonly int HostnameAndPort = (int)MatchAccuracyEnum.HostnameAndPort;
+        public static readonly int Hostname = (int)MatchAccuracyEnum.Hostname;
+        public static readonly int Domain = (int)MatchAccuracyEnum.Domain;
+        public static readonly int None = (int)MatchAccuracyEnum.None;
     } 
 
     public class FormField
@@ -116,6 +145,7 @@ namespace KeePassRPC.DataExchangeModel
         public FormFieldType @Type;
         public string Id;
         public int Page;
+        public PlaceholderHandling PlaceholderHandling;
 
         public FormField() { }
 
@@ -124,7 +154,8 @@ namespace KeePassRPC.DataExchangeModel
         string value,
         FormFieldType @type,
         string id,
-        int page)
+        int page,
+        PlaceholderHandling placeholderHandling)
         {
             Name = name;
             DisplayName = displayName;
@@ -132,6 +163,7 @@ namespace KeePassRPC.DataExchangeModel
             @Type = @type;
             Id = id;
             Page = page;
+            PlaceholderHandling = placeholderHandling;
         }
     }
 
@@ -174,9 +206,7 @@ namespace KeePassRPC.DataExchangeModel
         public bool NeverAutoFill;
         public bool AlwaysAutoSubmit;
         public bool NeverAutoSubmit;
-        public int Priority; // "KeeFox priority" = 1 (1 = 30000 relevancy score, 2 = 29999 relevancy score)
-        // long autoTypeWhen "KeeFox config: autoType after page 2" (after/before or > / <) (page # or # seconds or #ms)
-        // bool autoTypeOnly "KeeFox config: only autoType" This is probably redundant considering feature request #19?
+        public int Priority; // "Kee priority" = 1 (1 = 30000 relevancy score, 2 = 29999 relevancy score)
 
         public Group Parent;
         public Database Db;
@@ -244,7 +274,10 @@ namespace KeePassRPC.DataExchangeModel
         }
     }
 
+    // We have no immutable properties and no known need for GetHashCode so default behaviour is as good as any
+#pragma warning disable CS0659
     public class EntryConfig
+#pragma warning restore CS0659 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
     {
         public int Version = 1;
         public string FormActionURL;
@@ -264,13 +297,67 @@ namespace KeePassRPC.DataExchangeModel
         /// <summary>
         /// Exact match required
         /// </summary>
+        /// <remarks>This has to be public because Jayrock</remarks>
         public bool BlockHostnameOnlyMatch;
 
         /// <summary>
         /// Hostname/port match required
         /// </summary>
+        /// <remarks>This has to be public because Jayrock</remarks>
         public bool BlockDomainOnlyMatch;
 
+        /// <remarks>This has to be a method because Jayrock</remarks>
+        public MatchAccuracyMethod GetMatchAccuracyMethod()
+        {
+            if (BlockHostnameOnlyMatch) return MatchAccuracyMethod.Exact;
+            else if (BlockDomainOnlyMatch) return MatchAccuracyMethod.Hostname;
+            else return MatchAccuracyMethod.Domain;
+        }
+
+        /// <remarks>This has to be a method because Jayrock</remarks>
+        public void SetMatchAccuracyMethod(MatchAccuracyMethod value)
+        {
+            if (value == MatchAccuracyMethod.Domain)
+            {
+                BlockDomainOnlyMatch = false;
+                BlockHostnameOnlyMatch = false;
+            }
+            else if (value == MatchAccuracyMethod.Hostname)
+            {
+                BlockDomainOnlyMatch = true;
+                BlockHostnameOnlyMatch = false;
+            } else
+            {
+                BlockDomainOnlyMatch = false;
+                BlockHostnameOnlyMatch = true;
+            }
+        }
+
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EntryConfig"/> class.
+        /// Match configuration depends on defaults in DB settings
+        /// </summary>
+        public EntryConfig(MatchAccuracyMethod accuracyMethod)
+        {
+            switch (accuracyMethod)
+            {
+                case MatchAccuracyMethod.Exact: BlockDomainOnlyMatch = false; BlockHostnameOnlyMatch = true; break;
+                case MatchAccuracyMethod.Hostname: BlockDomainOnlyMatch = true; BlockHostnameOnlyMatch = false; break;
+                case MatchAccuracyMethod.Domain: BlockDomainOnlyMatch = false; BlockHostnameOnlyMatch = false; break;
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EntryConfig"/> class.
+        /// Match configuration defaults to MatchAccuracyMethod.Domain. In practice 
+        /// this is only called by Jayrock deserialisation methods so the match accuracy
+        /// method will be set to whatever value is stored in the JSON being used to
+        /// represent this EntryConfig when at rest inside a custom string.
+        /// </summary>
+        public EntryConfig()
+        {
+        }
 
         public override bool Equals(System.Object obj)
         {

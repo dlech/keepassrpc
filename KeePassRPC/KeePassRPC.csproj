@@ -122,6 +122,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BigInteger.cs" />
+    <Compile Include="DatabaseConfig.cs" />
     <Compile Include="DataExchangeModel.cs" />
     <Compile Include="DpiFix.cs" />
     <Compile Include="Extensions.cs" />
@@ -131,29 +132,41 @@
     <Compile Include="Forms\AuthForm.Designer.cs">
       <DependentUpon>AuthForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\KeeFoxEntryUserControl.cs">
+    <Compile Include="Forms\DatabaseSettingsUserControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Forms\KeeFoxEntryUserControl.Designer.cs">
-      <DependentUpon>KeeFoxEntryUserControl.cs</DependentUpon>
+    <Compile Include="Forms\DatabaseSettingsUserControl.Designer.cs">
+      <DependentUpon>DatabaseSettingsUserControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\KeeFoxFieldForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\KeeFoxFieldForm.Designer.cs">
-      <DependentUpon>KeeFoxFieldForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\KeeFoxGroupUserControl.cs">
+    <Compile Include="Forms\KeeEntryUserControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Forms\KeeFoxGroupUserControl.Designer.cs">
-      <DependentUpon>KeeFoxGroupUserControl.cs</DependentUpon>
+    <Compile Include="Forms\KeeEntryUserControl.Designer.cs">
+      <DependentUpon>KeeEntryUserControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\KeeFoxURLForm.cs">
+    <Compile Include="Forms\KeeFieldForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\KeeFoxURLForm.Designer.cs">
-      <DependentUpon>KeeFoxURLForm.cs</DependentUpon>
+    <Compile Include="Forms\KeeFieldForm.Designer.cs">
+      <DependentUpon>KeeFieldForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\KeeGroupUserControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\KeeGroupUserControl.Designer.cs">
+      <DependentUpon>KeeGroupUserControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\KeeMAMOverride.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\KeeMAMOverride.Designer.cs">
+      <DependentUpon>KeeMAMOverride.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\KeeURLForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\KeeURLForm.Designer.cs">
+      <DependentUpon>KeeURLForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\KeyCreationSimpleForm.cs">
       <SubType>Form</SubType>
@@ -188,6 +201,7 @@
     </Compile>
     <Compile Include="KeyChallengeResponse.cs" />
     <Compile Include="KeyContainerClass.cs" />
+    <Compile Include="MatchAccuracyMethod.cs" />
     <Compile Include="Native.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -196,6 +210,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="RPCClientManagers.cs" />
+    <Compile Include="SecureEdit.cs" />
     <Compile Include="SRP.cs" />
     <Compile Include="URLSummary.cs" />
     <Compile Include="Utils.cs" />
@@ -204,17 +219,23 @@
     <EmbeddedResource Include="Forms\AuthForm.resx">
       <DependentUpon>AuthForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\KeeFoxEntryUserControl.resx">
-      <DependentUpon>KeeFoxEntryUserControl.cs</DependentUpon>
+    <EmbeddedResource Include="Forms\DatabaseSettingsUserControl.resx">
+      <DependentUpon>DatabaseSettingsUserControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\KeeFoxFieldForm.resx">
-      <DependentUpon>KeeFoxFieldForm.cs</DependentUpon>
+    <EmbeddedResource Include="Forms\KeeEntryUserControl.resx">
+      <DependentUpon>KeeEntryUserControl.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\KeeFoxGroupUserControl.resx">
-      <DependentUpon>KeeFoxGroupUserControl.cs</DependentUpon>
+    <EmbeddedResource Include="Forms\KeeFieldForm.resx">
+      <DependentUpon>KeeFieldForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\KeeFoxURLForm.resx">
-      <DependentUpon>KeeFoxURLForm.cs</DependentUpon>
+    <EmbeddedResource Include="Forms\KeeGroupUserControl.resx">
+      <DependentUpon>KeeGroupUserControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\KeeMAMOverride.resx">
+      <DependentUpon>KeeMAMOverride.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\KeeURLForm.resx">
+      <DependentUpon>KeeURLForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\KeyCreationSimpleForm.resx">
       <DependentUpon>KeyCreationSimpleForm.cs</DependentUpon>
@@ -230,11 +251,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\KeeFox64.png" />
+    <None Include="Resources\Kee64.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\buttonGradient.png" />
@@ -244,11 +266,10 @@
     <None Include="Resources\buttonGradientHover.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\KeeFox16.png" />
+    <None Include="Resources\Kee16.png" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Resources\keefox.ico" />
-    <None Include="Resources\KeeFoxIcon.bmp" />
+    <Content Include="Resources\kee.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(KeePassPluginDevToolsPath)Plgx.targets" />

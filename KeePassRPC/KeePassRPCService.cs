@@ -151,18 +151,20 @@ namespace KeePassRPC
 
         void openGroupEditorWindow(PwGroup pg, PwDatabase db)
         {
-            GroupForm gf = new GroupForm();
-            gf.InitEx(pg, host.MainWindow.ClientIcons, host.Database);
+            using (GroupForm gf = new GroupForm())
+            {
+                gf.InitEx(pg, false, host.MainWindow.ClientIcons, host.Database);
 
-            gf.BringToFront();
-            gf.ShowInTaskbar = true;
+                gf.BringToFront();
+                gf.ShowInTaskbar = true;
 
-            host.MainWindow.Focus();
-            gf.TopMost = true;
-            gf.Focus();
-            gf.Activate();
-            if (gf.ShowDialog() == DialogResult.OK)
-                saveDB(db);
+                host.MainWindow.Focus();
+                gf.TopMost = true;
+                gf.Focus();
+                gf.Activate();
+                if (gf.ShowDialog() == DialogResult.OK)
+                    saveDB(db);
+            }
         }
 
         private delegate void dlgOpenGroupEditorWindow(PwGroup pg, PwDatabase db);
@@ -196,19 +198,21 @@ namespace KeePassRPC
 
         void OpenLoginEditorWindow(PwEntry pe, PwDatabase db)
         {
-            PwEntryForm ef = new PwEntryForm();
-            ef.InitEx(pe, PwEditMode.EditExistingEntry, host.Database, host.MainWindow.ClientIcons, false, false);
+            using (PwEntryForm ef = new PwEntryForm())
+            {
+                ef.InitEx(pe, PwEditMode.EditExistingEntry, host.Database, host.MainWindow.ClientIcons, false, false);
 
-            ef.BringToFront();
-            ef.ShowInTaskbar = true;
+                ef.BringToFront();
+                ef.ShowInTaskbar = true;
 
-            host.MainWindow.Focus();
-            ef.TopMost = true;
-            ef.Focus();
-            ef.Activate();
+                host.MainWindow.Focus();
+                ef.TopMost = true;
+                ef.Focus();
+                ef.Activate();
 
-            if (ef.ShowDialog() == DialogResult.OK)
-                saveDB(db);
+                if (ef.ShowDialog() == DialogResult.OK)
+                    saveDB(db);
+            }
         }
 
         private delegate void dlgOpenLoginEditorWindow(PwEntry pg, PwDatabase db);
@@ -272,7 +276,7 @@ namespace KeePassRPC
 
         private LightEntry GetEntryFromPwEntry(PwEntry pwe, int matchAccuracy, bool fullDetails, PwDatabase db, bool abortIfHidden)
         {
-            EntryConfig conf = pwe.GetKPRPCConfig();
+            EntryConfig conf = pwe.GetKPRPCConfig(db.GetKPRPCConfig().DefaultMatchAccuracy);
             if (conf == null)
                 return null;
             return GetEntryFromPwEntry(pwe, conf, matchAccuracy, fullDetails, db, abortIfHidden);
@@ -282,7 +286,6 @@ namespace KeePassRPC
         {
             ArrayList formFieldList = new ArrayList();
             ArrayList URLs = new ArrayList();
-            URLs.Add(pwe.Strings.ReadSafe("URL"));
             bool usernameFound = false;
             bool passwordFound = false;
             bool alwaysAutoFill = false;
@@ -293,42 +296,65 @@ namespace KeePassRPC
             string usernameName = "";
             string usernameValue = "";
 
+            if (!string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
+            {
+                URLs.Add(pwe.Strings.ReadSafe("URL"));
+            }
+
             if (abortIfHidden && conf.Hide)
                 return null;
 
-            if (!fullDetails)
-            {
+            bool dbDefaultPlaceholderHandlingEnabled = db.GetKPRPCConfig().DefaultPlaceholderHandling == PlaceholderHandling.Enabled;
 
-            }
-            else
+            if (conf.FormFieldList != null)
             {
-                if (conf.FormFieldList != null)
+                foreach (FormField ff in conf.FormFieldList)
                 {
-                    foreach (FormField ff in conf.FormFieldList)
+                    if (!fullDetails && ff.Type != FormFieldType.FFTusername)
+                        continue;
+
+                    bool enablePlaceholders = false;
+                    string displayName = ff.Name;
+                    string ffValue = ff.Value;
+
+                    if (ff.PlaceholderHandling == PlaceholderHandling.Enabled || 
+                        (ff.PlaceholderHandling == PlaceholderHandling.Default && dbDefaultPlaceholderHandlingEnabled))
                     {
-                        if (ff.Type == FormFieldType.FFTpassword)
+                        enablePlaceholders = true;
+                    }
+
+                    if (ff.Type == FormFieldType.FFTpassword && ff.Value == "{PASSWORD}")
+                    {
+                        ffValue = KeePassRPCPlugin.GetPwEntryString(pwe, "Password", db);
+                        if (!string.IsNullOrEmpty(ffValue))
                         {
-                            string ffValue = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ff.Value, db);
-                            if (!string.IsNullOrEmpty(ffValue))
-                            {
-                                formFieldList.Add(new FormField(ff.Name, "KeePass password", ffValue, ff.Type, ff.Id, ff.Page));
-                                passwordFound = true;
-                            }
+                            displayName = "KeePass password";
+                            passwordFound = true;
                         }
-                        else if (ff.Type == FormFieldType.FFTusername)
+                    }
+                    else if (ff.Type == FormFieldType.FFTusername && ff.Value == "{USERNAME}")
+                    {
+                        ffValue = KeePassRPCPlugin.GetPwEntryString(pwe, "UserName", db);
+                        if (!string.IsNullOrEmpty(ffValue))
                         {
-                            string ffValue = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ff.Value, db);
-                            if (!string.IsNullOrEmpty(ffValue))
-                            {
-                                formFieldList.Add(new FormField(ff.Name, "KeePass username", ffValue, ff.Type, ff.Id, ff.Page));
-                                usernameFound = true;
-                            }
+                            displayName = "KeePass username";
+                            usernameFound = true;
                         }
-                        else
-                            formFieldList.Add(new FormField(ff.Name, ff.Name, ff.Value, ff.Type, ff.Id, ff.Page));
+                    }
+
+                    string derefValue = enablePlaceholders ? KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ffValue, db) : ffValue;
+
+                    if (fullDetails)
+                    {
+                        formFieldList.Add(new FormField(ff.Name, displayName, derefValue, ff.Type, ff.Id, ff.Page, ff.PlaceholderHandling));
+                    } else
+                    {
+                        usernameName = "username";
+                        usernameValue = derefValue;
                     }
                 }
             }
+
             if (conf.AltURLs != null)
                 URLs.AddRange(conf.AltURLs);
 
@@ -337,11 +363,11 @@ namespace KeePassRPC
             if (fullDetails && !passwordFound)
             {
                 string ffValue = KeePassRPCPlugin.GetPwEntryString(pwe, "Password", db);
-                ffValue = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ffValue, db);
+                string derefValue = dbDefaultPlaceholderHandlingEnabled ? KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ffValue, db) : ffValue;
                 if (!string.IsNullOrEmpty(ffValue))
                 {
-                    formFieldList.Add(new FormField("password",
-                        "KeePass password", ffValue, FormFieldType.FFTpassword, "password", 1));
+                    formFieldList.Add(new FormField("",
+                        "KeePass password", derefValue, FormFieldType.FFTpassword, "", 1, PlaceholderHandling.Default));
                 }
             }
 
@@ -350,13 +376,19 @@ namespace KeePassRPC
             if (!usernameFound)
             {
                 string ffValue = KeePassRPCPlugin.GetPwEntryString(pwe, "UserName", db);
-                ffValue = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ffValue, db);
+                string derefValue = dbDefaultPlaceholderHandlingEnabled ? KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, ffValue, db) : ffValue;
                 if (!string.IsNullOrEmpty(ffValue))
                 {
-                    formFieldList.Add(new FormField("username",
-                        "KeePass username", ffValue, FormFieldType.FFTusername, "username", 1));
-                    usernameName = "username";
-                    usernameValue = ffValue;
+                    if (fullDetails)
+                    {
+                        formFieldList.Add(new FormField("",
+                            "KeePass username", derefValue, FormFieldType.FFTusername, "", 1, PlaceholderHandling.Default));
+                    }
+                    else
+                    {
+                        usernameName = "username";
+                        usernameValue = ffValue;
+                    }
                 }
             }
 
@@ -427,9 +459,9 @@ namespace KeePassRPC
             PwGroup pwg = GetRootPwGroup(pwd);
             Group rt = GetGroupFromPwGroup(pwg);
             if (fullDetail)
-                rt.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetail);
+                rt.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetail, true);
             else if (!noDetail)
-                rt.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetail);
+                rt.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetail, true);
 
             if (!noDetail)
                 rt.ChildGroups = GetChildGroups(pwd, pwg, true, fullDetail);
@@ -445,7 +477,7 @@ namespace KeePassRPC
         private void setPwEntryFromEntry(PwEntry pwe, Entry login)
         {
             bool firstPasswordFound = false;
-            EntryConfig conf = new EntryConfig();
+            EntryConfig conf = new EntryConfig(host.Database.GetKPRPCConfig().DefaultMatchAccuracy);
             List<FormField> ffl = new List<FormField>();
 
             // Go through each form field, mostly just making a copy but with occasional tweaks such as default username and password selection
@@ -454,18 +486,18 @@ namespace KeePassRPC
             {
                 if (kpff.Type == FormFieldType.FFTpassword && !firstPasswordFound)
                 {
-                    ffl.Add(new FormField(kpff.Name, "KeePass password", "{PASSWORD}", kpff.Type, kpff.Id, kpff.Page));
+                    ffl.Add(new FormField(kpff.Name, "KeePass password", "{PASSWORD}", kpff.Type, kpff.Id, kpff.Page, PlaceholderHandling.Default));
                     pwe.Strings.Set("Password", new ProtectedString(host.Database.MemoryProtection.ProtectPassword, kpff.Value));
                     firstPasswordFound = true;
                 }
                 else if (kpff.Type == FormFieldType.FFTusername)
                 {
-                    ffl.Add(new FormField(kpff.Name, "KeePass username", "{USERNAME}", kpff.Type, kpff.Id, kpff.Page));
+                    ffl.Add(new FormField(kpff.Name, "KeePass username", "{USERNAME}", kpff.Type, kpff.Id, kpff.Page, PlaceholderHandling.Default));
                     pwe.Strings.Set("UserName", new ProtectedString(host.Database.MemoryProtection.ProtectUserName, kpff.Value));
                 }
                 else
                 {
-                    ffl.Add(new FormField(kpff.Name, kpff.Name, kpff.Value, kpff.Type, kpff.Id, kpff.Page));
+                    ffl.Add(new FormField(kpff.Name, kpff.Name, kpff.Value, kpff.Type, kpff.Id, kpff.Page, PlaceholderHandling.Default));
                 }
             }
             conf.FormFieldList = ffl.ToArray();
@@ -477,13 +509,17 @@ namespace KeePassRPC
                 string url = login.URLs[i];
                 if (i == 0)
                 {
+                    // We can't use the framework Uri.Port property here because
+                    // we are interested in whether it is explicit or not - the 
+                    // Port property returns the default port for a protocol if 
+                    // one is not explicitly included in the URL
                     URLSummary urlsum = URLSummary.FromURL(url);
 
                     // Require more strict default matching for entries that come
                     // with a port configured (user can override in the rare case
                     // that they want the loose domain-level matching)
                     if (!string.IsNullOrEmpty(urlsum.Port))
-                        conf.BlockDomainOnlyMatch = true;
+                        conf.SetMatchAccuracyMethod(MatchAccuracyMethod.Hostname);
 
                     pwe.Strings.Set("URL", new ProtectedString(host.Database.MemoryProtection.ProtectUrl, url ?? ""));
                 }
@@ -602,9 +638,11 @@ namespace KeePassRPC
             {
                 // we found an icon but it wasn't in the cache so lets
                 // calculate its base64 encoding and then add it to the cache
-                MemoryStream ms = new MemoryStream();
-                icon.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                imageData = Convert.ToBase64String(ms.ToArray());
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    icon.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    imageData = Convert.ToBase64String(ms.ToArray());
+                }
                 DataExchangeModel.IconCache<PwUuid>.AddIcon(uuid, imageData);
             }
 
@@ -639,34 +677,33 @@ namespace KeePassRPC
                 //MemoryStream id = new MemoryStream();
                 //icon.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
 
-                Image img = KeePass.UI.UIUtil.LoadImage(Convert.FromBase64String(imageData));
-
-                Image imgNew = new Bitmap(img, new Size(16, 16));
-
-                MemoryStream ms = new MemoryStream();
-                imgNew.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-
-                byte[] msByteArray = ms.ToArray();
-
-                foreach (PwCustomIcon item in host.Database.CustomIcons)
+                using (Image img = KeePass.UI.UIUtil.LoadImage(Convert.FromBase64String(imageData)))
+                using (Image imgNew = new Bitmap(img, new Size(16, 16)))
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    // re-use existing custom icon if it's already in the database
-                    // (This will probably fail if database is used on 
-                    // both 32 bit and 64 bit machines - not sure why...)
-                    if (KeePassLib.Utility.MemUtil.ArraysEqual(msByteArray, item.ImageDataPng))
+                    imgNew.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+
+                    byte[] msByteArray = ms.ToArray();
+
+                    foreach (PwCustomIcon item in host.Database.CustomIcons)
                     {
-                        customIconUUID = item.Uuid;
-                        host.Database.UINeedsIconUpdate = true;
-                        return true;
+                        // re-use existing custom icon if it's already in the database
+                        // (This will probably fail if database is used on 
+                        // both 32 bit and 64 bit machines - not sure why...)
+                        if (KeePassLib.Utility.MemUtil.ArraysEqual(msByteArray, item.ImageDataPng))
+                        {
+                            customIconUUID = item.Uuid;
+                            host.Database.UINeedsIconUpdate = true;
+                            return true;
+                        }
                     }
+                    PwCustomIcon pwci = new PwCustomIcon(new PwUuid(true), msByteArray);
+                    host.Database.CustomIcons.Add(pwci);
+
+                    customIconUUID = pwci.Uuid;
+                    host.Database.UINeedsIconUpdate = true;
+
                 }
-
-                PwCustomIcon pwci = new PwCustomIcon(new PwUuid(true),
-                    msByteArray);
-                host.Database.CustomIcons.Add(pwci);
-
-                customIconUUID = pwci.Uuid;
-                host.Database.UINeedsIconUpdate = true;
 
                 return true;
             }
@@ -678,7 +715,7 @@ namespace KeePassRPC
 
         #endregion
 
-        #region Configuration of KeePass/KeeFox and databases
+        #region Configuration of KeePass/Kee and databases
 
         [JsonRpcMethod]
         public Configuration GetCurrentKFConfig()
@@ -914,17 +951,16 @@ namespace KeePassRPC
                 return;
 
             PwDatabase chosenDB = SelectDatabase("");
-            var parentGroup = KeePassRPCPlugin.GetAndInstallKeeFoxPasswordBackupGroup(chosenDB);
+            var parentGroup = KeePassRPCPlugin.GetAndInstallKeePasswordBackupGroup(chosenDB);
 
             PwEntry newLogin = new PwEntry(true, true);
             newLogin.Strings.Set(PwDefs.TitleField, new ProtectedString(
-                chosenDB.MemoryProtection.ProtectTitle, "KeeFox generated password at: " + DateTime.Now));
+                chosenDB.MemoryProtection.ProtectTitle, "Kee generated password at: " + DateTime.Now));
             newLogin.Strings.Set(PwDefs.UrlField, new ProtectedString(
                 chosenDB.MemoryProtection.ProtectUrl, url));
             newLogin.Strings.Set(PwDefs.PasswordField, new ProtectedString(
                 chosenDB.MemoryProtection.ProtectPassword, password));
-            EntryConfig conf = new EntryConfig();
-            conf.BlockDomainOnlyMatch = true;
+            EntryConfig conf = new EntryConfig(MatchAccuracyMethod.Hostname);
             conf.Hide = true;
             newLogin.SetKPRPCConfig(conf);
             parentGroup.AddEntry(newLogin, true);
@@ -1211,11 +1247,11 @@ namespace KeePassRPC
 
         private void MergeEntries(PwEntry destination, PwEntry source, int urlMergeMode, PwDatabase db)
         {
-            EntryConfig destConfig = destination.GetKPRPCConfig();
+            EntryConfig destConfig = destination.GetKPRPCConfig(db.GetKPRPCConfig().DefaultMatchAccuracy);
             if (destConfig == null)
                 return;
 
-            EntryConfig sourceConfig = source.GetKPRPCConfig();
+            EntryConfig sourceConfig = source.GetKPRPCConfig(db.GetKPRPCConfig().DefaultMatchAccuracy);
             if (sourceConfig == null)
                 return;
 
@@ -1364,7 +1400,7 @@ namespace KeePassRPC
 
             if (!string.IsNullOrEmpty(location))
             {
-                // If any listed group UUID is found in this database, set it as the KeeFox home group
+                // If any listed group UUID is found in this database, set it as the Kee home group
                 string rootGroupsConfig = host.CustomConfig
                     .GetString("KeePassRPC.knownLocations." + location + ".RootGroups", "");
                 string[] rootGroups = new string[0];
@@ -1387,16 +1423,17 @@ namespace KeePassRPC
                 // If no locations found we'll just return the default root group
             }
 
-            if (pwd.CustomData.Exists("KeePassRPC.KeeFox.rootUUID") && pwd.CustomData.Get("KeePassRPC.KeeFox.rootUUID").Length == 32)
+            var conf = pwd.GetKPRPCConfig();
+            if (!string.IsNullOrWhiteSpace(conf.RootUUID) && conf.RootUUID.Length == 32)
             {
-                string uuid = pwd.CustomData.Get("KeePassRPC.KeeFox.rootUUID");
+                string uuid = conf.RootUUID;
 
                 PwUuid pwuuid = new PwUuid(KeePassLib.Utility.MemUtil.HexStringToByteArray(uuid));
 
                 PwGroup matchedGroup = pwd.RootGroup.Uuid == pwuuid ? pwd.RootGroup : pwd.RootGroup.FindGroup(pwuuid, true);
 
                 if (matchedGroup == null)
-                    throw new Exception("Could not find requested group. Have you deleted your KeeFox start/home group? Set a new one and try again.");
+                    throw new Exception("Could not find requested group. Have you deleted your Kee home group? Set a new one and try again.");
 
                 return matchedGroup;
             }
@@ -1442,8 +1479,14 @@ namespace KeePassRPC
 
         private bool ConfigIsCorrectVersion(PwDatabase t)
         {
+            // Both version 2 and 3 are correct since their differences 
+            // do not extend to the public API exposed by KPRPC
             if (t.CustomData.Exists("KeePassRPC.KeeFox.configVersion") 
-                && t.CustomData.Get("KeePassRPC.KeeFox.configVersion") == KeePassRPCPlugin.CurrentConfigVersion)
+                && t.CustomData.Get("KeePassRPC.KeeFox.configVersion") == "2")
+            {
+                return true;
+            }
+            else if (t.GetKPRPCConfig().Version == 3)
             {
                 return true;
             }
@@ -1454,13 +1497,43 @@ namespace KeePassRPC
         }
 
         /// <summary>
-        /// Return a list of every login in the database
+        /// Return a list of every entry in the database that has a URL
         /// </summary>
-        /// <param name="logins">the list of all logins</param>
-        /// <param name="current__"></param>
-        /// <returns>the number of logins in the list</returns>
+        /// <returns>all logins in the database that have a URL</returns>
+        [JsonRpcMethod]
+        public Entry[] GetEntries()
+        {
+            return getAllLogins(true);
+        }
+
+        /// <summary>
+        /// Return a list of every entry in the database that has a URL
+        /// </summary>
+        /// <returns>all logins in the database that have a URL</returns>
+        /// <remarks>GetAllLogins is deprecated. Use GetEntries instead.</remarks>
         [JsonRpcMethod]
         public Entry[] GetAllLogins()
+        {
+            return getAllLogins(true);
+        }
+
+        /// <summary>
+        /// Return a list of every entry in the database - this includes entries without an URL
+        /// </summary>
+        /// <returns>all logins in the database</returns>
+        [JsonRpcMethod]
+        public Entry[] GetAllEntries()
+        {
+            return getAllLogins(false);
+        }
+
+        /// <summary>
+        /// Returns a list of every entry in the database
+        /// </summary>
+        /// <param name="urlRequired">true = URL field must exist for a child entry to be returned, false = all entries are returned</param>
+        /// <param name="current__"></param>
+        /// <returns>all logins in the database subject to the urlRequired setting</returns>
+        public Entry[] getAllLogins(bool urlRequired)
         {
             int count = 0;
             List<Entry> allEntries = new List<Entry>();
@@ -1476,7 +1549,7 @@ namespace KeePassRPC
                 if (EntryIsInRecycleBin(pwe, host.Database))
                     continue; // ignore if it's in the recycle bin
 
-                if (string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
+                if (urlRequired && string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
                     continue; // ignore if it has no URL
 
                 Entry kpe = (Entry)GetEntryFromPwEntry(pwe, MatchAccuracy.None, true, host.Database, true);
@@ -1500,7 +1573,7 @@ namespace KeePassRPC
             PwGroup parent = pwe.ParentGroup;
             while (parent != null)
             {
-                if (db.RecycleBinUuid.EqualsValue(parent.Uuid))
+                if (db.RecycleBinUuid.Equals(parent.Uuid))
                     return true;
                 parent = parent.ParentGroup;
             }
@@ -1512,12 +1585,40 @@ namespace KeePassRPC
         /// </summary>
         /// <param name="uuid">the unique ID of the group we're interested in.</param>
         /// <param name="current__"></param>
-        /// <returns>the list of every entry directly inside the group.</returns>
+        /// <returns>the list of every entry with a URL directly inside the group.</returns>
         [JsonRpcMethod]
         public Entry[] GetChildEntries(string uuid)
         {
             PwGroup matchedGroup;
-            if (uuid != null && uuid.Length > 0)
+            matchedGroup = findMatchingGroup(uuid);
+
+            return (Entry[])GetChildEntries(host.Database, matchedGroup, true, true);
+        }
+
+        /// <summary>
+        /// Returns a list of all the entry contained within a group - including ones missing a URL (not recursive)
+        /// </summary>
+        /// <param name="uuid">the unique ID of the group we're interested in.</param>
+        /// <param name="current__"></param>
+        /// <returns>the list of every entry directly inside the group.</returns>
+        [JsonRpcMethod]
+        public Entry[] GetAllChildEntries(string uuid)
+        {
+            PwGroup matchedGroup;
+            matchedGroup = findMatchingGroup(uuid);
+
+            return (Entry[])GetChildEntries(host.Database, matchedGroup, true, false);
+        }
+
+        /// <summary>
+        /// Finds the group that matches a UUID, else return the root group
+        /// </summary>
+        /// <param name="uuid">the unique ID of the group we're interested in.</param>
+        /// <returns>Group that matches the UUID, else the root group.</returns>
+        private PwGroup findMatchingGroup(string uuid)
+        {
+            PwGroup matchedGroup;
+            if (!string.IsNullOrEmpty(uuid))
             {
                 PwUuid pwuuid = new PwUuid(KeePassLib.Utility.MemUtil.HexStringToByteArray(uuid));
 
@@ -1529,18 +1630,21 @@ namespace KeePassRPC
             }
 
             if (matchedGroup == null)
-                throw new Exception("Could not find requested group. Have you deleted your KeeFox start/home group? Set a new one and try again.");
+                throw new Exception("Could not find requested group. Have you deleted your Kee home group? Set a new one and try again.");
 
-            return (Entry[])GetChildEntries(host.Database, matchedGroup, true);
+            return matchedGroup;
         }
 
         /// <summary>
         /// Returns a list of every entry contained within a group (not recursive)
         /// </summary>
-        /// <param name="uuid">the unique ID of the group we're interested in.</param>
+        /// <param name="pwd">the database to search in</param>
+        /// <param name="group">the group to search in</param>
+        /// <param name="fullDetails">true = all details; false = some details ommitted (e.g. password)</param>
+        /// <param name="urlRequired">true = URL field must exist for a child entry to be returned, false = all entries are returned</param>
         /// <param name="current__"></param>
         /// <returns>the list of every entry directly inside the group.</returns>
-        private LightEntry[] GetChildEntries(PwDatabase pwd, PwGroup group, bool fullDetails)
+        private LightEntry[] GetChildEntries(PwDatabase pwd, PwGroup group, bool fullDetails, bool urlRequired)
         {
             List<Entry> allEntries = new List<Entry>();
             List<LightEntry> allLightEntries = new List<LightEntry>();
@@ -1556,7 +1660,7 @@ namespace KeePassRPC
                     if (EntryIsInRecycleBin(pwe, pwd))
                         continue; // ignore if it's in the recycle bin
 
-                    if (string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
+                    if (urlRequired && string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
                         continue;
                     if (fullDetails)
                     {
@@ -1605,19 +1709,7 @@ namespace KeePassRPC
         public Group[] GetChildGroups(string uuid)
         {
             PwGroup matchedGroup;
-            if (uuid != null && uuid.Length > 0)
-            {
-                PwUuid pwuuid = new PwUuid(KeePassLib.Utility.MemUtil.HexStringToByteArray(uuid));
-
-                matchedGroup = host.Database.RootGroup.Uuid == pwuuid ? host.Database.RootGroup : host.Database.RootGroup.FindGroup(pwuuid, true);
-            }
-            else
-            {
-                matchedGroup = GetRootPwGroup(host.Database);
-            }
-
-            if (matchedGroup == null)
-                throw new Exception("Could not find requested group. Have you deleted your KeeFox start/home group? Set a new one and try again.");
+            matchedGroup = findMatchingGroup(uuid);
 
             return GetChildGroups(host.Database, matchedGroup, false, true);
         }
@@ -1640,7 +1732,7 @@ namespace KeePassRPC
 
             foreach (PwGroup pwg in output)
             {
-                if (pwd.RecycleBinUuid.EqualsValue(pwg.Uuid))
+                if (pwd.RecycleBinUuid.Equals(pwg.Uuid))
                     continue; // ignore if it's the recycle bin
 
                 Group kpg = GetGroupFromPwGroup(pwg);
@@ -1649,9 +1741,9 @@ namespace KeePassRPC
                 {
                     kpg.ChildGroups = GetChildGroups(pwd, pwg, true, fullDetails);
                     if (fullDetails)
-                        kpg.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetails);
+                        kpg.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetails, true);
                     else
-                        kpg.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetails);
+                        kpg.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetails, true);
                 }
                 allGroups.Add(kpg);
             }
@@ -1686,7 +1778,7 @@ namespace KeePassRPC
                 PwGroup matchedGroup = host.Database.RootGroup.Uuid == pwuuid ? host.Database.RootGroup : host.Database.RootGroup.FindGroup(pwuuid, true);
 
                 if (matchedGroup == null)
-                    throw new Exception("Could not find requested group. Have you deleted your KeeFox start/home group? Set a new one and try again.");
+                    throw new Exception("Could not find requested group. Have you deleted your Kee home group? Set a new one and try again.");
 
                 groups = new Group[1];
                 groups[0] = GetGroupFromPwGroup(matchedGroup);
@@ -1701,11 +1793,8 @@ namespace KeePassRPC
         }
 
         // Must match host name; if allowHostnameOnlyMatch is false, exact URL must be matched
-        private int bestMatchAccuracyForAnyURL(PwEntry pwe, EntryConfig conf, string url, URLSummary urlSummary)
+        public static int BestMatchAccuracyForAnyURL(PwEntry pwe, EntryConfig conf, string url, URLSummary urlSummary, MatchAccuracyMethod mam)
         {
-            bool requireExactURLMatch = conf.BlockHostnameOnlyMatch;
-            bool requireAtLeastHostnameAndPortURLMatch = conf.BlockDomainOnlyMatch;
-
             int bestMatchSoFar = MatchAccuracy.None;
 
             List<string> URLs = new List<string>(3);
@@ -1719,7 +1808,7 @@ namespace KeePassRPC
                     return MatchAccuracy.Best;
 
                 // If we require very accurate matches, we can skip the more complex assessment below
-                if (requireExactURLMatch)
+                if (mam == MatchAccuracyMethod.Exact)
                     continue;
 
                 int entryUrlQSStartIndex = entryURL.IndexOf('?');
@@ -1744,7 +1833,7 @@ namespace KeePassRPC
                 // If we need at least a matching hostname and port (equivelent to
                 // KeeFox <1.5) or we are missing the information needed to match
                 // more loose components of the URL we have to skip these last tests
-                if (requireAtLeastHostnameAndPortURLMatch || entryUrlSummary.Domain == null || urlSummary.Domain == null)
+                if (mam == MatchAccuracyMethod.Hostname || entryUrlSummary.Domain == null || urlSummary.Domain == null)
                     continue;
 
                 if (bestMatchSoFar < MatchAccuracy.Hostname
@@ -1888,6 +1977,8 @@ namespace KeePassRPC
                 //foreach DB...
                 foreach (PwDatabase db in dbs)
                 {
+                    var dbConf = db.GetKPRPCConfig();
+
                     KeePassLib.Collections.PwObjectList<PwEntry> output = new KeePassLib.Collections.PwObjectList<PwEntry>();
 
                     PwGroup searchGroup = GetRootPwGroup(db);
@@ -1901,11 +1992,8 @@ namespace KeePassRPC
                         entryUserName = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, entryUserName, db);
                         if (EntryIsInRecycleBin(pwe, db))
                             continue; // ignore if it's in the recycle bin
-
-                        //if (string.IsNullOrEmpty(pwe.Strings.ReadSafe("URL")))
-                        //    continue; // entries must have a standard URL entry
                         
-                        EntryConfig conf = pwe.GetKPRPCConfig(null, ref configErrors);
+                        EntryConfig conf = pwe.GetKPRPCConfig(null, ref configErrors, dbConf.DefaultMatchAccuracy);
 
                         if (conf == null || conf.Hide)
                             continue;
@@ -1939,9 +2027,9 @@ namespace KeePassRPC
                                 && (string.IsNullOrEmpty(username) || username == entryUserName))
                         {
                             foreach (string URL in URLs)
-                        {
-                            
-                                int accuracy = bestMatchAccuracyForAnyURL(pwe, conf, URL, URLHostnameAndPorts[URL]);
+                            {
+                                var mam = pwe.GetMatchAccuracyMethod(URLHostnameAndPorts[URL], dbConf);
+                                int accuracy = BestMatchAccuracyForAnyURL(pwe, conf, URL, URLHostnameAndPorts[URL], mam);
                                 if (accuracy > bestMatchAccuracy)
                                     bestMatchAccuracy = accuracy;
 
@@ -1955,7 +2043,8 @@ namespace KeePassRPC
                         {
                             foreach (string URL in URLs)
                             {
-                                int accuracy = bestMatchAccuracyForAnyURL(pwe, conf, URL, URLHostnameAndPorts[URL]);
+                                var mam = pwe.GetMatchAccuracyMethod(URLHostnameAndPorts[URL], dbConf);
+                                int accuracy = BestMatchAccuracyForAnyURL(pwe, conf, URL, URLHostnameAndPorts[URL], mam);
                                 if (accuracy > bestMatchAccuracy)
                                     bestMatchAccuracy = accuracy;
                             }
@@ -2004,7 +2093,7 @@ namespace KeePassRPC
 
                     }
                     if (configErrors.Count > 0)
-                        MessageBox.Show("There are configuration errors in your database called '" + db.Name + "'. To fix the entries listed below and prevent this warning message appearing, please edit the value of the 'KeePassRPC JSON config' advanced string. Please ask for help on http://keefox.org/help/forum if you're not sure how to fix this. These entries are affected:" + Environment.NewLine + string.Join(Environment.NewLine, configErrors.ToArray()), "Warning: Configuration errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("There are configuration errors in your database called '" + db.Name + "'. To fix the entries listed below and prevent this warning message appearing, please edit the value of the 'KeePassRPC JSON config' advanced string. Please ask for help on https://forum.kee.pm if you're not sure how to fix this. These entries are affected:" + Environment.NewLine + string.Join(Environment.NewLine, configErrors.ToArray()), "Warning: Configuration errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             allEntries.Sort(delegate(Entry e1, Entry e2)

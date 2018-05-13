@@ -23,6 +23,7 @@ using KeePassRPC.DataExchangeModel;
 using Fleck2.Interfaces;
 using DomainPublicSuffix;
 using KeePassLib.Utility;
+using KeePass.Util.Spr;
 
 namespace KeePassRPC
 {
@@ -32,7 +33,7 @@ namespace KeePassRPC
     public sealed class KeePassRPCExt : Plugin
     {
         // version information
-        public static readonly Version PluginVersion = new Version(1, 7, 3);
+        public static readonly Version PluginVersion = new Version(1, 8, 0);
 
         public override string UpdateUrl
         {
@@ -50,7 +51,7 @@ namespace KeePassRPC
         public TextWriter logger;
 
         /// <summary>
-        /// Listens for requests from RPC clients such as KeeFox
+        /// Listens for requests from RPC clients such as Kee
         /// </summary>
         public KeePassRPCServer RPCServer
         {
@@ -68,15 +69,13 @@ namespace KeePassRPC
         internal IPluginHost _host;
 
         private ToolStripMenuItem _keePassRPCOptions = null;
-        private ToolStripMenuItem _keeFoxSampleEntries = null;
         private ToolStripSeparator _tsSeparator1 = null;
-        private ToolStripMenuItem _keeFoxRootMenu = null;
+        private ToolStripMenuItem _keeRootMenu = null;
 
         private EventHandler<GwmWindowEventArgs> GwmWindowAddedHandler;
 
         private static LockManager _lockRPCClientManagers = new LockManager();
         private Dictionary<string, KeePassRPCClientManager> _RPCClientManagers = new Dictionary<string, KeePassRPCClientManager>(3);
-        public string CurrentConfigVersion = "2";
         public volatile bool terminating = false;
 
         private int FindKeePassRPCPort(IPluginHost host)
@@ -160,7 +159,7 @@ namespace KeePassRPC
                     "KeePassRPC.publicSuffixDomainCache.path",
                     GetLocalConfigLocation() + "publicSuffixDomainCache.txt"));
                 
-                // The KeeFox client manager holds objects relating to the web socket connections managed by the Fleck2 library
+                // The Kee client manager holds objects relating to the web socket connections managed by the Fleck2 library
                 CreateClientManagers();
 
                 if (logger != null) logger.WriteLine("Client managers started.");
@@ -180,16 +179,16 @@ namespace KeePassRPC
                 {
                     if (ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse)
                     {
-                        MessageBox.Show(@"KeePassRPC is already listening for connections. To allow KeePassRPC clients (e.g. KeeFox) to connect to this instance of KeePass, please close all other running instances of KeePass and restart this KeePass. If you want multiple instances of KeePass to be running at the same time, you'll need to configure some of them to connect using a different communication port.
+                        MessageBox.Show(@"KeePassRPC is already listening for connections. To allow KeePassRPC clients (e.g. Kee in your web browser) to connect to this instance of KeePass, please close all other running instances of KeePass and restart this KeePass. If you want multiple instances of KeePass to be running at the same time, you'll need to configure some of them to connect using a different communication port.
 
-See https://github.com/luckyrat/KeeFox/wiki/en-|-Options-|-KPRPC-Port
+See https://forum.kee.pm/t/connection-security-levels/1075
 
 KeePassRPC requires this port to be available: " + portNew + ". Technical detail: " + ex.ToString());
                         if (logger != null) logger.WriteLine("Socket (port) already in use. KeePassRPC requires this port to be available: " + portNew + ". Technical detail: " + ex.ToString());
                     }
                     else
                     {
-                        MessageBox.Show(@"KeePassRPC could not start listening for connections. To allow KeePassRPC clients (e.g. KeeFox) to connect to this instance of KeePass, please fix the problem indicated in the technical detail below and restart KeePass.
+                        MessageBox.Show(@"KeePassRPC could not start listening for connections. To allow KeePassRPC clients (e.g. Kee in your web browser) to connect to this instance of KeePass, please fix the problem indicated in the technical detail below and restart KeePass.
 
 KeePassRPC requires this port to be available: " + portNew + ". Technical detail: " + ex.ToString());
                         if (logger != null) logger.WriteLine("Socket error. KeePassRPC requires this port to be available: " + portNew + ". Maybe check that you have no firewall or other third party security software interfering with your system. Technical detail: " + ex.ToString());
@@ -209,32 +208,25 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
                 _host.MainWindow.FileSaved += OnKPDBSaved;
 
                 _host.MainWindow.DocumentManager.ActiveDocumentSelected += OnKPDBSelected;
-
+                
                 // Get a reference to the 'Tools' menu item container
                 ToolStripItemCollection tsMenu = _host.MainWindow.ToolsMenu.DropDownItems;
 
                 // Add menu item for options
                 _keePassRPCOptions = new ToolStripMenuItem();
-                _keePassRPCOptions.Text = "KeePassRPC (KeeFox) Options...";
+                _keePassRPCOptions.Text = "KeePassRPC (Kee) Options...";
                 _keePassRPCOptions.Click += OnToolsOptions;
                 _keePassRPCOptions.Enabled = true;
                 tsMenu.Add(_keePassRPCOptions);
-
-                // Add menu item for KeeFox samples
-                _keeFoxSampleEntries = new ToolStripMenuItem();
-                _keeFoxSampleEntries.Text = "Insert KeeFox tutorial samples";
-                _keeFoxSampleEntries.Click += OnToolsInstallKeeFoxSampleEntries;
-                _keeFoxSampleEntries.Enabled = true;
-                tsMenu.Add(_keeFoxSampleEntries);
 
                 // Add a seperator and menu item to the group context menu
                 ContextMenuStrip gcm = host.MainWindow.GroupContextMenu;
                 _tsSeparator1 = new ToolStripSeparator();
                 gcm.Items.Add(_tsSeparator1);
-                _keeFoxRootMenu = new ToolStripMenuItem();
-                _keeFoxRootMenu.Text = "Set as KeeFox start group";
-                _keeFoxRootMenu.Click += OnMenuSetRootGroup;
-                gcm.Items.Add(_keeFoxRootMenu);
+                _keeRootMenu = new ToolStripMenuItem();
+                _keeRootMenu.Text = "Set as Kee home group";
+                _keeRootMenu.Click += OnMenuSetRootGroup;
+                gcm.Items.Add(_keeRootMenu);
 
                 // not acting on upgrade info just yet but we need to track it for future proofing
                 bool upgrading = refreshVersionInfo(host);
@@ -283,19 +275,58 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
         
         void GlobalWindowManager_WindowAdded(object sender, GwmWindowEventArgs e)
         {
-            PwEntryForm ef = e.Form as PwEntryForm;
+            var ef = e.Form as PwEntryForm;
             if (ef != null)
             {
                 ef.Shown += new EventHandler(editEntryFormShown);
                 return;
             }
 
-            GroupForm gf = e.Form as GroupForm;
+            var gf = e.Form as GroupForm;
             if (gf != null)
             {
                 gf.Shown += new EventHandler(editGroupFormShown);
                 return;
             }
+
+            var dsf = e.Form as DatabaseSettingsForm;
+            if (dsf != null)
+            {
+                dsf.Shown += new EventHandler(databaseSettingsFormShown);
+            }
+        }
+
+        void databaseSettingsFormShown(object sender, EventArgs e)
+        {
+            TabControl mainTabControl = null;
+            var dsf = sender as DatabaseSettingsForm;
+
+            //This might not work, but might as well use the feature if possible.
+            try
+            {
+                Control[] cs = dsf.Controls.Find("m_tabMain", true);
+                if (cs.Length == 0)
+                    return;
+                mainTabControl = cs[0] as TabControl;
+            }
+            catch
+            {
+                // that's life, just move on.
+                return;
+            }
+
+            if (mainTabControl == null) return;
+
+            var dbSettingsUserControl = new DatabaseSettingsUserControl(_host.MainWindow.ActiveDatabase);
+
+            TabPage keeTabPage = new TabPage("Kee");
+            dbSettingsUserControl.Dock = DockStyle.Fill;
+            keeTabPage.Controls.Add(dbSettingsUserControl);
+            if (mainTabControl.ImageList == null)
+                mainTabControl.ImageList = new ImageList();
+            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.Kee16, Color.Transparent);
+            keeTabPage.ImageIndex = imageIndex;
+            mainTabControl.TabPages.Add(keeTabPage);
         }
 
         void editGroupFormShown(object sender, EventArgs e)
@@ -397,18 +428,10 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
 
         void OnToolsOptions(object sender, EventArgs e)
         {
-            KeePassRPC.Forms.OptionsForm ofDlg = new KeePassRPC.Forms.OptionsForm(_host, this);
-            ofDlg.ShowDialog();
+            using (KeePassRPC.Forms.OptionsForm ofDlg = new KeePassRPC.Forms.OptionsForm(_host, this))
+                ofDlg.ShowDialog();
         }
-
-        void OnToolsInstallKeeFoxSampleEntries(object sender, EventArgs e)
-        {
-            if (_host.Database != null && _host.Database.IsOpen)
-            {
-                InstallKeeFoxSampleEntries(_host.Database, false);
-            }
-        }
-
+        
         void OnMenuSetRootGroup(object sender, EventArgs e)
         {
             PwGroup pg = _host.MainWindow.GetSelectedGroup();
@@ -416,8 +439,9 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
             if (pg == null || pg.Uuid == null || pg.Uuid == PwUuid.Zero)
                 return;
 
-            _host.Database.CustomData.Set("KeePassRPC.KeeFox.rootUUID",
-                KeePassLib.Utility.MemUtil.ByteArrayToHexString(pg.Uuid.UuidBytes));
+            var conf = _host.Database.GetKPRPCConfig();
+            conf.RootUUID = KeePassLib.Utility.MemUtil.ByteArrayToHexString(pg.Uuid.UuidBytes);
+            _host.Database.SetKPRPCConfig(conf);
 
             _host.MainWindow.UpdateUI(false, null, true, null, true, null, true);
         }
@@ -429,25 +453,29 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
             for (int i = 0; i < il.Images.Count; i++)
             {
                 Image image = il.Images[i];
-                MemoryStream ms = new MemoryStream();
-                image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                icons[i] = Convert.ToBase64String(ms.ToArray());
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    icons[i] = Convert.ToBase64String(ms.ToArray());
+                }
             }
             return icons;
         }
 
-        public delegate object WelcomeKeeFoxUserDelegate();
+        public delegate object WelcomeKeeUserDelegate();
 
 
-        public object WelcomeKeeFoxUser()
+        public object WelcomeKeeUser()
         {
-            WelcomeForm wf = new WelcomeForm();
-            DialogResult dr = wf.ShowDialog(_host.MainWindow);
-            if (dr == DialogResult.Yes)
-                CreateNewDatabase();
-            if (dr == DialogResult.Yes || dr == DialogResult.No)
-                return 0;
-            return 1;
+            using (WelcomeForm wf = new WelcomeForm())
+            {
+                DialogResult dr = wf.ShowDialog(_host.MainWindow);
+                if (dr == DialogResult.Yes)
+                    CreateNewDatabase();
+                if (dr == DialogResult.Yes || dr == DialogResult.No)
+                    return 0;
+                return 1;
+            }
         }
 
         public delegate object GetIconDelegate(int iconIndex);
@@ -477,90 +505,97 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
             if (string.IsNullOrEmpty(cachedBase64))
             {
                 // the icon wasn't in the cache so lets calculate its base64 encoding and then add it to the cache
-                MemoryStream ms = new MemoryStream();
-                Image imgNew = new Bitmap(_host.MainWindow.Icon.ToBitmap(), new Size(16, 16));
-                imgNew.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                string imageData = Convert.ToBase64String(ms.ToArray());
-                DataExchangeModel.IconCache<string>
-                    .AddIcon(_host.Database.IOConnectionInfo.Path, imageData);
+                using (MemoryStream ms = new MemoryStream())
+                using (Image originalImage = _host.MainWindow.Icon.ToBitmap())
+                using (Image imgNew = new Bitmap(originalImage, new Size(16, 16)))
+                {
+                    imgNew.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    string imageData = Convert.ToBase64String(ms.ToArray());
+                    DataExchangeModel.IconCache<string>
+                        .AddIcon(_host.Database.IOConnectionInfo.Path, imageData);
+                }
             }
         }
 
         /// <summary>
         /// Called when [file new].
         /// </summary>
-        /// <remarks>Review whenever private KeePass.MainForm.OnFileNew method changes. Last reviewed 20150523</remarks>
+        /// <remarks>Review whenever private KeePass.MainForm.OnFileNew method changes. Last reviewed 20180416</remarks>
         /// <param name="sender">The sender.</param>
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         internal void CreateNewDatabase()
         {
             if (!AppPolicy.Try(AppPolicyId.SaveFile)) return;
 
-            SaveFileDialog sfd = UIUtil.CreateSaveFileDialog(KPRes.CreateNewDatabase,
+            DialogResult dr;
+            string strPath;
+            using (SaveFileDialog sfd = UIUtil.CreateSaveFileDialog(KPRes.CreateNewDatabase,
                 KPRes.NewDatabaseFileName, UIUtil.CreateFileTypeFilter(
-                AppDefs.FileExtension.FileExt, KPRes.KdbxFiles, true), 1,
-                AppDefs.FileExtension.FileExt, false);
-
-            GlobalWindowManager.AddDialog(sfd);
-            DialogResult dr = sfd.ShowDialog(_host.MainWindow);
-            GlobalWindowManager.RemoveDialog(sfd);
-
-            string strPath = sfd.FileName;
+                    AppDefs.FileExtension.FileExt, KPRes.KdbxFiles, true), 1,
+                AppDefs.FileExtension.FileExt, false))
+            {
+                GlobalWindowManager.AddDialog(sfd);
+                dr = sfd.ShowDialog(_host.MainWindow);
+                GlobalWindowManager.RemoveDialog(sfd);
+                strPath = sfd.FileName;
+            }
 
             if (dr != DialogResult.OK) return;
 
             KeePassLib.Keys.CompositeKey key = null;
-            KeyCreationSimpleForm kcsf = new KeyCreationSimpleForm();
             bool showUsualKeePassKeyCreationDialog = false;
-
-            // Don't show the simple key creation form if the user has set
-            // security policies that restrict the allowable composite key sources
-            if (KeePass.Program.Config.UI.KeyCreationFlags == 0)
+            using (KeyCreationSimpleForm kcsf = new KeyCreationSimpleForm())
             {
-                kcsf.InitEx(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), true);
-                dr = kcsf.ShowDialog(_host.MainWindow);
-                if ((dr == DialogResult.Cancel) || (dr == DialogResult.Abort)) return;
-                if (dr == DialogResult.No)
+                // Don't show the simple key creation form if the user has set
+                // security policies that restrict the allowable composite key sources
+                if (KeePass.Program.Config.UI.KeyCreationFlags == 0)
                 {
-                    showUsualKeePassKeyCreationDialog = true;
+                    kcsf.InitEx(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), true);
+                    dr = kcsf.ShowDialog(_host.MainWindow);
+                    if ((dr == DialogResult.Cancel) || (dr == DialogResult.Abort)) return;
+                    if (dr == DialogResult.No)
+                    {
+                        showUsualKeePassKeyCreationDialog = true;
+                    }
+                    else
+                    {
+                        key = kcsf.CompositeKey;
+                    }
                 }
                 else
                 {
-                    key = kcsf.CompositeKey;
+                    showUsualKeePassKeyCreationDialog = true;
                 }
+
+                if (showUsualKeePassKeyCreationDialog)
+                {
+                    using (KeyCreationForm kcf = new KeyCreationForm())
+                    {
+                        kcf.InitEx(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), true);
+                        dr = kcf.ShowDialog(_host.MainWindow);
+                        if ((dr == DialogResult.Cancel) || (dr == DialogResult.Abort)) return;
+                        key = kcf.CompositeKey;
+                    }
+                }
+
+                PwDocument dsPrevActive = _host.MainWindow.DocumentManager.ActiveDocument;
+                PwDatabase pd = _host.MainWindow.DocumentManager.CreateNewDocument(true).Database;
+                pd.New(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), key);
+
+                if (!string.IsNullOrEmpty(kcsf.DatabaseName))
+                {
+                    pd.Name = kcsf.DatabaseName;
+                    pd.NameChanged = DateTime.Now;
+                }
+
+                InsertStandardKeePassData(pd);
+
+                var conf = pd.GetKPRPCConfig();
+                pd.SetKPRPCConfig(conf);
+
+                // save the new database & update UI appearance
+                pd.Save(_host.MainWindow.CreateStatusBarLogger());
             }
-            else
-            {
-                showUsualKeePassKeyCreationDialog = true;
-            }
-
-            if (showUsualKeePassKeyCreationDialog)
-            {
-                KeyCreationForm kcf = new KeyCreationForm();
-                kcf.InitEx(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), true);
-                dr = kcf.ShowDialog(_host.MainWindow);
-                if ((dr == DialogResult.Cancel) || (dr == DialogResult.Abort)) return;
-                key = kcf.CompositeKey;
-            }
-
-            PwDocument dsPrevActive = _host.MainWindow.DocumentManager.ActiveDocument;
-            PwDatabase pd = _host.MainWindow.DocumentManager.CreateNewDocument(true).Database;
-            pd.New(KeePassLib.Serialization.IOConnectionInfo.FromPath(strPath), key);
-
-            if (!string.IsNullOrEmpty(kcsf.DatabaseName))
-            {
-                pd.Name = kcsf.DatabaseName;
-                pd.NameChanged = DateTime.Now;
-            }
-
-            InsertStandardKeePassData(pd);
-
-            InstallKeeFoxSampleEntries(pd, false);
-
-            pd.CustomData.Set("KeePassRPC.KeeFox.configVersion", CurrentConfigVersion);
-
-            // save the new database & update UI appearance
-            pd.Save(_host.MainWindow.CreateStatusBarLogger());
             _host.MainWindow.UpdateUI(true, null, true, null, true, null, false);
         }
 
@@ -585,165 +620,58 @@ KeePassRPC requires this port to be available: " + portNew + ". Technical detail
             pd.RootGroup.AddGroup(pg, true);
         }
 
-        internal PwGroup GetAndInstallKeeFoxPasswordBackupGroup(PwDatabase pd)
+        internal PwGroup GetAndInstallKeePasswordBackupGroup(PwDatabase pd)
         {
             PwUuid groupUuid = new PwUuid(new byte[] {
                 0xea, 0x9f, 0xf2, 0xed, 0x05, 0x12, 0x47, 0x47,
                 0xb6, 0x3e, 0xaf, 0xa5, 0x15, 0xa3, 0x04, 0x30});
 
+            var keeGroup = GetKeeGroup(pd);
+
             PwGroup kfpbg = pd.RootGroup.FindGroup(groupUuid, true);
             if (kfpbg == null)
             {
-                var kfGroup = GetAndInstallKeeFoxGroup(pd, true);
-                kfpbg = new PwGroup(false, true, "KeeFox Generated Password Backups", PwIcon.Folder);
+                kfpbg = new PwGroup(false, true, "Kee Generated Password Backups", PwIcon.Folder);
                 kfpbg.Uuid = groupUuid;
-                kfpbg.CustomIconUuid = GetKeeFoxIcon();
-                kfGroup.AddGroup(kfpbg, true);
+                kfpbg.CustomIconUuid = GetKeeIcon();
+                keeGroup.AddGroup(kfpbg, true);
+            }
+            else if (kfpbg.Name == "KeeFox Generated Password Backups")
+            {
+                kfpbg.Name = "Kee Generated Password Backups";
             }
             return kfpbg;
         }
 
-        internal PwGroup GetAndInstallKeeFoxGroup(PwDatabase pd, bool skipGroupWarning)
+        /// <summary>
+        /// Gets the kee group and renames it from KeeFox if necessary.
+        /// </summary>
+        /// <param name="pd">The database</param>
+        /// <returns>The Kee group or the root group if the group does not exist</returns>
+        internal PwGroup GetKeeGroup(PwDatabase pd)
         {
             PwUuid groupUuid = new PwUuid(new byte[] {
                 0xea, 0x9f, 0xf2, 0xed, 0x05, 0x12, 0x47, 0x47,
                 0xb6, 0x3e, 0xaf, 0xa5, 0x15, 0xa3, 0x04, 0x23});
 
-            PwGroup kfpg = RPCService.GetRootPwGroup(pd, "").FindGroup(groupUuid, true);
+            PwGroup kfpg = pd.RootGroup.FindGroup(groupUuid, true);
             if (kfpg == null)
             {
-                // check that the group doesn't exist outside of the visible home group
-                PwGroup kfpgTestRoot = pd.RootGroup.FindGroup(groupUuid, true);
-                if (kfpgTestRoot != null)
-                {
-                    if (skipGroupWarning)
-                    {
-                        return kfpgTestRoot;
-                    } else
-                    {
-                        MessageBox.Show("The KeeFox group already exists but your current home group setting is preventing KeeFox from seeing it. Please change your home group or move the 'KeeFox' group to a location inside your current home group.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return null;
-                    }
-                }
-                else
-                {
-                    kfpg = new PwGroup(false, true, "KeeFox", PwIcon.Folder);
-                    kfpg.Uuid = groupUuid;
-                    kfpg.CustomIconUuid = GetKeeFoxIcon();
-                    pd.RootGroup.AddGroup(kfpg, true);
-                }
+                return pd.RootGroup;
+            }
+            else if (kfpg.Name == "KeeFox")
+            {
+                kfpg.Name = "Kee";
             }
             return kfpg;
         }
-
-        private void InstallKeeFoxSampleEntries(PwDatabase pd, bool skipGroupWarning)
-        {
-            PwGroup kfpg = GetAndInstallKeeFoxGroup(pd, skipGroupWarning);
-            if (kfpg == null)
-                return;
-
-            List<PwUuid> pwuuids = GetKeeFoxTutorialUUIDs();
-            bool entryAdded = false;
-
-            // We search for the KeeFox entries in the entire database 
-            // in case the user has moved them out of the KeeFox group
-
-            if (pd.RootGroup.FindEntry(pwuuids[0], true) == null)
-            {
-                PwEntry pe = createKeeFoxSample(pd, pwuuids[0],
-                    "Quick Start (double click on the URL to learn how to use KeeFox)",
-                    "testU1", "testP1", @"http://tutorial.keefox.org/", null);
-                EntryConfig conf = new EntryConfig();
-                conf.BlockDomainOnlyMatch = true;
-                pe.SetKPRPCConfig(conf);
-                kfpg.AddEntry(pe, true);
-                entryAdded = true;
-            }
-
-            if (pd.RootGroup.FindEntry(pwuuids[1], true) == null)
-            {
-                PwEntry pe = createKeeFoxSample(pd, pwuuids[1],
-                    "KeeFox sample entry with alternative URL",
-                    "testU2", "testP2", @"http://does.not.exist/", @"This sample helps demonstrate the use of alternative URLs to control which websites each password entry should apply to.");
-                EntryConfig conf = new EntryConfig();
-                conf.Version = 1;
-                conf.AltURLs = new string[] { @"http://tutorial-section-c.keefox.org/part3" };
-                conf.BlockDomainOnlyMatch = true;
-                pe.SetKPRPCConfig(conf);
-                kfpg.AddEntry(pe, true);
-                entryAdded = true;
-            }
-
-            if (pd.RootGroup.FindEntry(pwuuids[2], true) == null)
-            {
-                PwEntry pe = createKeeFoxSample(pd, pwuuids[2],
-                    "KeeFox sample entry with no auto-fill and no auto-submit",
-                    "testU3", "testP3", @"http://tutorial-section-d.keefox.org/part4", @"This sample helps demonstrate the use of advanced settings that give you fine control over the behaviour of a password entry. In this specific example, the entry has been set to never automatically fill matching login forms when the web page loads and to never automatically submit, even when you have explicity told KeeFox to log in to this web page.");
-                EntryConfig conf = new EntryConfig();
-                conf.Version = 1;
-                conf.NeverAutoFill = true;
-                conf.NeverAutoSubmit = true;
-                conf.BlockDomainOnlyMatch = true;
-                pe.SetKPRPCConfig(conf);
-                kfpg.AddEntry(pe, true);
-                entryAdded = true;
-            }
-
-            if (pd.RootGroup.FindEntry(pwuuids[4], true) == null)
-            {
-                PwEntry pe = createKeeFoxSample(pd, pwuuids[4],
-                    "KeeFox sample entry for HTTP authentication",
-                    "testU4", "testP4", @"http://tutorial-section-d.keefox.org/part6", @"This sample helps demonstrate logging in to HTTP authenticated websites.");
-                EntryConfig conf = new EntryConfig();
-                conf.Version = 1;
-                conf.HTTPRealm = "KeeFox tutorial sample";
-                conf.BlockDomainOnlyMatch = true;
-                pe.SetKPRPCConfig(conf);
-                kfpg.AddEntry(pe, true);
-                entryAdded = true;
-            }
-
-            if (entryAdded)
-                _host.MainWindow.UpdateUI(true, null, true, null, true, null, true);
-        }
-
-        private PwEntry createKeeFoxSample(PwDatabase pd, PwUuid uuid, string title, string username, string password, string url, string notes)
-        {
-            if (string.IsNullOrEmpty(title)) title = "KeeFox sample entry";
-            if (string.IsNullOrEmpty(url)) url = @"http://tutorial.keefox.org/";
-            notes = @"This password entry is part of the KeeFox tutorial. To start the tutorial, launch Firefox and load http://tutorial.keefox.org/.
-
-Deleting it will not prevent KeeFox or KeePass from working correctly but you will not be able to use the tutorial at http://tutorial.keefox.org/.
-
-You can recreate these entries by selecting Tools / Insert KeeFox tutorial samples." + (string.IsNullOrEmpty(notes) ? "" : (@"
-
-" + notes));
-
-            PwEntry pe = new PwEntry(false, true);
-            pe.Uuid = uuid;
-            pe.Strings.Set(PwDefs.TitleField, new ProtectedString(
-                pd.MemoryProtection.ProtectTitle, title));
-            pe.Strings.Set(PwDefs.UserNameField, new ProtectedString(
-                pd.MemoryProtection.ProtectUserName, username));
-            pe.Strings.Set(PwDefs.UrlField, new ProtectedString(
-                pd.MemoryProtection.ProtectUrl, url));
-            pe.Strings.Set(PwDefs.PasswordField, new ProtectedString(
-                pd.MemoryProtection.ProtectPassword, password));
-            pe.Strings.Set(PwDefs.NotesField, new ProtectedString(
-                pd.MemoryProtection.ProtectNotes, notes));
-
-            //TODO2: get autotype example working again following 2.17 API change?
-            //pe.AutoType.Set(KPRes.TargetWindow, 
-            //    @"{USERNAME}{TAB}{PASSWORD}{TAB}{ENTER}");
-            return pe;
-        }
-
-        private PwUuid GetKeeFoxIcon()
+        
+        private PwUuid GetKeeIcon()
         {
             //return null;
 
             // {EB9FF2ED-0512-4747-B63E-AFA515A30422}
-            PwUuid keeFoxIconUuid = new PwUuid(new byte[] {
+            PwUuid keeIconUuid = new PwUuid(new byte[] {
                 0xeb, 0x9f, 0xf2, 0xed, 0x05, 0x12, 0x47, 0x47,
                 0xb6, 0x3e, 0xaf, 0xa5, 0x15, 0xa3, 0x04, 0x22});
 
@@ -751,7 +679,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
             foreach (PwCustomIcon testIcon in _host.Database.CustomIcons)
             {
-                if (testIcon.Uuid == keeFoxIconUuid)
+                if (testIcon.Uuid == keeIconUuid)
                 {
                     icon = testIcon;
                     break;
@@ -760,15 +688,17 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
             if (icon == null)
             {
-                MemoryStream ms = new MemoryStream();
-                global::KeePassRPC.Properties.Resources.KeeFox16.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    global::KeePassRPC.Properties.Resources.Kee16.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
 
-                // Create a new custom icon for use with this entry
-                icon = new PwCustomIcon(keeFoxIconUuid,
-                    ms.ToArray());
-                _host.Database.CustomIcons.Add(icon);
+                    // Create a new custom icon for use with this entry
+                    icon = new PwCustomIcon(keeIconUuid,
+                        ms.ToArray());
+                    _host.Database.CustomIcons.Add(icon);
+                }
             }
-            return keeFoxIconUuid;
+            return keeIconUuid;
 
 
             //string keeFoxIcon = @"iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAFfKj/FAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAABpUExURf///wAAAAAAAFpaWl5eXm5ubnh4eICAgIeHh5GRkaCgoKOjo66urq+vr8jIyMnJycvLy9LS0uDg4Ovr6+zs7O3t7e7u7u/v7/X19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///5goWdMAAAADdFJOUwAxTTRG/kEAAACRSURBVBjTTY2JEoMgDESDaO0h9m5DUZT9/49sCDLtzpB5eQwLkSTkwb0cOBnJksYxiHqORHZG3gFc88WReTzvBFoOMbUCVkN/ATw3CnwHmwLjpYCfYoF5TQphAUztMfp5zsm5phY6MEsV+LapYRPAoC/ooOLxfL33RXQifJjjsnZFWPBniksCbBU+6F4FmV+IvtrgDOmaq+PeAAAAAElFTkSuQmCC";
@@ -864,7 +794,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
             // Remove group context menu items
             ContextMenuStrip gcm = _host.MainWindow.GroupContextMenu;
             gcm.Items.Remove(_tsSeparator1);
-            gcm.Items.Remove(_keeFoxRootMenu);
+            gcm.Items.Remove(_keeRootMenu);
 
             if (logger != null)
                 logger.Close();
@@ -877,7 +807,8 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
         private void OnKPDBCreated(object sender, FileCreatedEventArgs e)
         {
-            e.Database.CustomData.Set("KeePassRPC.KeeFox.configVersion", CurrentConfigVersion);
+            var conf = e.Database.GetKPRPCConfig();
+            e.Database.SetKPRPCConfig(conf);
             EnsureDBIconIsInKPRPCIconCache();
             //KeePassRPCService.ensureDBisOpenEWH.Set(); // signal that DB is now open so any waiting JSONRPC thread can go ahead
             SignalAllManagedRPCClients(KeePassRPC.DataExchangeModel.Signal.DATABASE_OPEN);
@@ -897,14 +828,35 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
         {
             EnsureDBIconIsInKPRPCIconCache();
 
+            MigrateVeryOldConfigVersions(e);
+
+            // Config versions < 3 will be lazily updated when a v2 config
+            // is first accessed and the DB next saved.
+
+            // IMPORTANT: GetKPRPCConfig() MUST NOT be invoked on the current 
+            // database before the migration from very old versions has completed.
+
+            // The old v2 config flag will be left in place at least for the time
+            // being because this will enable rollback to an earlier version of 
+            // KeePassRPC, albeit also rolling back to a different 
+            // configuration - the Kee home group will be effectively reset 
+            // as the user swaps between config v2 and v3 versions of KPRPC
+
+            SignalAllManagedRPCClients(KeePassRPC.DataExchangeModel.Signal.DATABASE_OPEN);
+        }
+
+        private void MigrateVeryOldConfigVersions(FileOpenedEventArgs e)
+        {
+
             // If we've not already upgraded the KPRPC data for this database...
-            if (GetConfigVersion(e.Database) < 1)
+            if (GetConfigVersionForLegacyMigration(e.Database) < 1)
             {
-                RemoveKeeFoxTutorialDuplicateEntries(e.Database);
+                // We used to just remove duplicates but may as well tidy up all while we're here.
+                RemoveKeeFoxTutorialEntries(e.Database);
 
                 bool foundStringsToUpgrade = false;
                 // Scan every string of every entry to find out whether we need to disturb the user
-                KeePassLib.Delegates.EntryHandler eh = delegate(PwEntry pe)
+                KeePassLib.Delegates.EntryHandler eh = delegate (PwEntry pe)
                 {
                     foreach (KeyValuePair<string, ProtectedString> kvp in pe.Strings)
                     {
@@ -922,7 +874,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                 e.Database.RootGroup.TraverseTree(TraversalMethod.PreOrder, null, eh);
                 if (foundStringsToUpgrade)
                 {
-                    DialogResult dr = MessageBox.Show("KeePassRPC (KeeFox) needs to update your database. This process is safe but irreversible so it is strongly recommended that you ensure you have a recent backup of your password database before you continue." + Environment.NewLine + Environment.NewLine + "You can take a backup right now if you want: just find the database file on your system and copy (not move) it to a safe place. The database you are trying to open is located at " + e.Database.IOConnectionInfo.Path + "." + Environment.NewLine + Environment.NewLine + "You will not be able to use this database with older versions of KeeFox once you click OK. Make sure you hold onto your backup copy until you're happy that the upgrade process was successful." + Environment.NewLine + Environment.NewLine + "Press OK to perform the upgrade.", "KeeFox upgrade", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
+                    DialogResult dr = MessageBox.Show("KeePassRPC (Kee) needs to update your database. This process is safe but irreversible so it is strongly recommended that you ensure you have a recent backup of your password database before you continue." + Environment.NewLine + Environment.NewLine + "You can take a backup right now if you want: just find the database file on your system and copy (not move) it to a safe place. The database you are trying to open is located at " + e.Database.IOConnectionInfo.Path + "." + Environment.NewLine + Environment.NewLine + "You will not be able to use this database with older versions of Kee (or its predecessor KeeFox) once you click OK. Make sure you hold onto your backup copy until you're happy that the upgrade process was successful." + Environment.NewLine + Environment.NewLine + "Press OK to perform the upgrade.", "Kee upgrade", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
                     if (dr != DialogResult.OK)
                     {
                         // User aborted so we must shut down this database to prevent KeeFox from attempting communication with it
@@ -931,7 +883,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                         _host.MainWindow.DocumentManager.ActiveDatabase.UINeedsIconUpdate = true;
                         _host.MainWindow.UpdateUI(true, null, true, null, true, null, false);
                         _host.MainWindow.ResetDefaultFocus(null);
-                        DialogResult dr2 = MessageBox.Show("KeePassRPC has NOT upgraded your database. The database has been closed to protect it from damage." + Environment.NewLine + Environment.NewLine + "It is safe to use this database with older versions of KeeFox but you can not use it with this version until you re-open it and perform the upgrade.", "KeeFox upgrade cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        DialogResult dr2 = MessageBox.Show("KeePassRPC has NOT upgraded your database. The database has been closed to protect it from damage." + Environment.NewLine + Environment.NewLine + "It is safe to use this database with older versions of Kee but you can not use it with this version until you re-open it and perform the upgrade.", "Kee upgrade cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
                     else
@@ -939,7 +891,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                         // User has confirmed they have a recent backup so we start the upgrade
 
                         // Scan every string of every entry to find entries we will update
-                        KeePassLib.Delegates.EntryHandler ehupgrade = delegate(PwEntry pe)
+                        KeePassLib.Delegates.EntryHandler ehupgrade = delegate (PwEntry pe)
                         {
                             foreach (KeyValuePair<string, ProtectedString> kvp in pe.Strings)
                             {
@@ -962,7 +914,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
                             _host.MainWindow.BeginInvoke(new dlgSaveDB(saveDB), e.Database);
 
-                            DialogResult drfinished = MessageBox.Show("KeePassRPC (KeeFox) information upgraded. Press OK to use your updated database.", "KeeFox upgrade", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            DialogResult drfinished = MessageBox.Show("KeePassRPC (Kee) information upgraded. Press OK to use your updated database.", "Kee upgrade", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
                 }
@@ -971,13 +923,13 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                     // Nothing to upgrade in this DB but we'll bump up the config
                     // version count anyway to ensure that even DBs that contain no
                     // specific KPRPC information are able to be accessed 
-                    // via KPRPC clients like KeeFox
+                    // via KPRPC clients like Kee
                     e.Database.CustomData.Set("KeePassRPC.KeeFox.configVersion", "1");
                     _host.MainWindow.BeginInvoke(new dlgSaveDB(saveDB), e.Database);
                 }
             }
 
-            if (GetConfigVersion(e.Database) < 2)
+            if (GetConfigVersionForLegacyMigration(e.Database) < 2)
             {
                 // v2 entry config is backwards compatible but we need to upgrade any KeeFox tutorial
                 // entries. This means each entry's config version will remain at 1 but the overall
@@ -989,11 +941,9 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                     _host.MainWindow.BeginInvoke(new dlgSaveDB(saveDB), e.Database);
                 }
             }
-
-            SignalAllManagedRPCClients(KeePassRPC.DataExchangeModel.Signal.DATABASE_OPEN);
         }
 
-        private int GetConfigVersion(PwDatabase db)
+        private int GetConfigVersionForLegacyMigration(PwDatabase db)
         {
             if (db.CustomData.Exists("KeePassRPC.KeeFox.configVersion"))
             {
@@ -1005,17 +955,11 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
             return 0;
         }
 
-        private void RemoveKeeFoxTutorialDuplicateEntries(PwDatabase db)
+        private void RemoveKeeFoxTutorialEntries(PwDatabase db)
         {
-            // We know that this upgrade path may contain duplicate KeeFox
-            // sample entries due to an earlier bug so lets get rid of them
-            // for good and replace them with a single instance of each. Not
-            // a perfect solution but should only cause problems for KeeFox
-            // developers and those with OCD and a short fuse.
-
             List<string> uuids = GetKeeFoxTutorialUUIDsAsStrings();
 
-            KeePassLib.Collections.PwObjectList<PwEntry> output = new KeePassLib.Collections.PwObjectList<PwEntry>();
+            PwObjectList<PwEntry> output = new PwObjectList<PwEntry>();
 
             // Scan every entry for matching UUIDs and add them to the list for deletion
             KeePassLib.Delegates.EntryHandler eh = delegate(PwEntry pe)
@@ -1035,7 +979,6 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                 {
                     pwe.ParentGroup.Entries.Remove(pwe);
                 }
-                InstallKeeFoxSampleEntries(db, true);
             }
         }
 
@@ -1065,10 +1008,12 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
             {
                 foreach (PwEntry pwe in output)
                 {
-                    var conf = pwe.GetKPRPCConfig();
+                    var conf = pwe.GetKPRPCConfig(MatchAccuracyMethod.Hostname);
                     if (conf == null)
                         return false;
-                    conf.BlockDomainOnlyMatch = true;
+                    // Explicitly override - we don't know if we found an existing
+                    // config for this entry or created a new one
+                    conf.SetMatchAccuracyMethod(MatchAccuracyMethod.Hostname);
                     conf.Priority = 0;
                     pwe.SetKPRPCConfig(conf);
                 }
@@ -1084,7 +1029,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
             foreach (PwEntry pwe in output)
             {
-                var conf = pwe.GetKPRPCConfig();
+                var conf = pwe.GetKPRPCConfig(MatchAccuracyMethod.Domain);
                 if (conf == null)
                     return false;
 
@@ -1103,7 +1048,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                     // that they want the loose domain-level matching)
                     if (!string.IsNullOrEmpty(urlsum.Port))
                     {
-                        conf.BlockDomainOnlyMatch = true;
+                        conf.SetMatchAccuracyMethod(MatchAccuracyMethod.Hostname);
                         pwe.SetKPRPCConfig(conf);
                     }
                 }
@@ -1288,7 +1233,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
 
         public string GetPwEntryStringFromDereferencableValue(PwEntry pwe, string name, PwDatabase db)
         {
-            return KeePass.Util.Spr.SprEngine.Compile(name, false, pwe, db, false, false);
+            return SprEngine.Compile(name, new SprContext(pwe, db, SprCompileFlags.All & ~SprCompileFlags.Run, false, false));
         }
 
         // This is only called by legacy migration code now
@@ -1380,14 +1325,14 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                     {
                         if (pwe.Strings.Exists("Form field " + fieldName + " value"))
                             formFieldList.Add(new FormField(fieldName,
-                                fieldName, GetPwEntryString(pwe, "Form field " + fieldName + " value", db), FormFieldType.FFTpassword, fieldId, fieldPage));
+                                fieldName, GetPwEntryString(pwe, "Form field " + fieldName + " value", db), FormFieldType.FFTpassword, fieldId, fieldPage, PlaceholderHandling.Default));
                         else if (pwe.Strings.Exists("KPRPC Form field " + fieldName + " value"))
                             formFieldList.Add(new FormField(fieldName,
-                                fieldName, GetPwEntryString(pwe, "KPRPC Form field " + fieldName + " value", db), FormFieldType.FFTpassword, fieldId, fieldPage));
+                                fieldName, GetPwEntryString(pwe, "KPRPC Form field " + fieldName + " value", db), FormFieldType.FFTpassword, fieldId, fieldPage, PlaceholderHandling.Default));
                         else if (!passwordFound) // it's the default password
                         {
                             formFieldList.Add(new FormField(fieldName,
-                                "KeePass password", "{PASSWORD}", FormFieldType.FFTpassword, fieldId, fieldPage));
+                                "KeePass password", "{PASSWORD}", FormFieldType.FFTpassword, fieldId, fieldPage, PlaceholderHandling.Default));
                             passwordFound = true;
                         }
                     }
@@ -1397,7 +1342,7 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                         //if (usernameFound)
                         //    displayUser = fieldName;
                         formFieldList.Add(new FormField(fieldName,
-                            displayUser, "{USERNAME}", FormFieldType.FFTusername, fieldId, fieldPage));
+                            displayUser, "{USERNAME}", FormFieldType.FFTusername, fieldId, fieldPage, PlaceholderHandling.Default));
                         usernameName = fieldName;
                         usernameValue = GetPwEntryString(pwe, "UserName", db);
                         //usernameFound = true;
@@ -1405,22 +1350,22 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                     else if (pweValue == "text")
                     {
                         formFieldList.Add(new FormField(fieldName,
-                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTtext, fieldId, fieldPage));
+                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTtext, fieldId, fieldPage, PlaceholderHandling.Default));
                     }
                     else if (pweValue == "radio")
                     {
                         formFieldList.Add(new FormField(fieldName,
-                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTradio, fieldId, fieldPage));
+                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTradio, fieldId, fieldPage, PlaceholderHandling.Default));
                     }
                     else if (pweValue == "select")
                     {
                         formFieldList.Add(new FormField(fieldName,
-                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTselect, fieldId, fieldPage));
+                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTselect, fieldId, fieldPage, PlaceholderHandling.Default));
                     }
                     else if (pweValue == "checkbox")
                     {
                         formFieldList.Add(new FormField(fieldName,
-                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTcheckbox, fieldId, fieldPage));
+                fieldName, GetFormFieldValue(pwe, fieldName, db), FormFieldType.FFTcheckbox, fieldId, fieldPage, PlaceholderHandling.Default));
                     }
                 }
                 else if (pweKey == "Alternative URLs" || pweKey == "KPRPC Alternative URLs")
@@ -1498,7 +1443,11 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
             }
 
 
-            EntryConfig conf = new EntryConfig();
+            // We can't use _host.Database.GetKPRPCConfig().DefaultMatchAccuracy here because:
+            // a) We know it does not exist since we're migrating from an ancient DB config version
+            // b) If we do, we would trigger the migration to a v3+ config before we have
+            // performed these intermediate migrations
+            EntryConfig conf = new EntryConfig(MatchAccuracyMethod.Domain);
             conf.Hide = false;
             string hide = "";
             try
@@ -1519,13 +1468,12 @@ You can recreate these entries by selecting Tools / Insert KeeFox tutorial sampl
                 catch (Exception) { hide = ""; }
             }
 
-            conf.BlockHostnameOnlyMatch = false;
             string block = "";
             try
             {
                 block = GetPwEntryString(pwe, "KPRPC Block hostname-only match", db);
                 if (!string.IsNullOrEmpty(block))
-                    conf.BlockHostnameOnlyMatch = true;
+                    conf.SetMatchAccuracyMethod(MatchAccuracyMethod.Exact);
             }
             catch (Exception) { block = ""; }
 

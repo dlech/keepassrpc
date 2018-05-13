@@ -118,26 +118,26 @@ namespace KeePassRPC
 
         public override void AttachToEntryDialog(KeePassRPCExt plugin, PwEntry entry, TabControl mainTabControl, PwEntryForm form, CustomListViewEx advancedListView, ProtectedStringDictionary strings)
         {
-            KeeFoxEntryUserControl entryControl = new KeeFoxEntryUserControl(plugin, entry, advancedListView, form, strings);
+            KeeEntryUserControl entryControl = new KeeEntryUserControl(plugin, entry, advancedListView, form, strings);
             TabPage keeTabPage = new TabPage("Kee");
             entryControl.Dock = DockStyle.Fill;
             keeTabPage.Controls.Add(entryControl);
             if (mainTabControl.ImageList == null)
                 mainTabControl.ImageList = new ImageList();
-            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.KeeFox16, Color.Transparent);
+            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.Kee16, Color.Transparent);
             keeTabPage.ImageIndex = imageIndex;
             mainTabControl.TabPages.Add(keeTabPage);
         }
 
         public override void AttachToGroupDialog(KeePassRPCExt plugin, PwGroup group, TabControl mainTabControl)
         {
-            KeeFoxGroupUserControl groupControl = new KeeFoxGroupUserControl(plugin, group);
+            KeeGroupUserControl groupControl = new KeeGroupUserControl(plugin, group);
             TabPage keeTabPage = new TabPage("Kee");
             groupControl.Dock = DockStyle.Fill;
             keeTabPage.Controls.Add(groupControl);
             if (mainTabControl.ImageList == null)
                 mainTabControl.ImageList = new ImageList();
-            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.KeeFox16, Color.Transparent);
+            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.Kee16, Color.Transparent);
             keeTabPage.ImageIndex = imageIndex;
             mainTabControl.TabPages.Add(keeTabPage);
         }
@@ -154,26 +154,26 @@ namespace KeePassRPC
 
         public override void AttachToEntryDialog(KeePassRPCExt plugin, PwEntry entry, TabControl mainTabControl, PwEntryForm form, CustomListViewEx advancedListView, ProtectedStringDictionary strings)
         {
-            KeeFoxEntryUserControl entryControl = new KeeFoxEntryUserControl(plugin, entry, advancedListView, form, strings);
+            KeeEntryUserControl entryControl = new KeeEntryUserControl(plugin, entry, advancedListView, form, strings);
             TabPage keefoxTabPage = new TabPage("KeeFox");
             entryControl.Dock = DockStyle.Fill;
             keefoxTabPage.Controls.Add(entryControl);
             if (mainTabControl.ImageList == null)
                 mainTabControl.ImageList = new ImageList();
-            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.KeeFox16, Color.Transparent);
+            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.Kee16, Color.Transparent);
             keefoxTabPage.ImageIndex = imageIndex;
             mainTabControl.TabPages.Add(keefoxTabPage);
         }
 
         public override void AttachToGroupDialog(KeePassRPCExt plugin, PwGroup group, TabControl mainTabControl)
         {
-            KeeFoxGroupUserControl groupControl = new KeeFoxGroupUserControl(plugin, group);
+            KeeGroupUserControl groupControl = new KeeGroupUserControl(plugin, group);
             TabPage keefoxTabPage = new TabPage("KeeFox");
             groupControl.Dock = DockStyle.Fill;
             keefoxTabPage.Controls.Add(groupControl);
             if (mainTabControl.ImageList == null)
                 mainTabControl.ImageList = new ImageList();
-            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.KeeFox16, Color.Transparent);
+            int imageIndex = mainTabControl.ImageList.Images.Add(global::KeePassRPC.Properties.Resources.Kee16, Color.Transparent);
             keefoxTabPage.ImageIndex = imageIndex;
             mainTabControl.TabPages.Add(keefoxTabPage);
         }

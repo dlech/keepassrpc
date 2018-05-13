@@ -12,14 +12,14 @@ namespace KeePassRPC
 {
     public static class Extensions
     {
-        public static EntryConfig GetKPRPCConfig(this PwEntry entry, ProtectedStringDictionary strings, ref List<string> configErrors)
+        public static EntryConfig GetKPRPCConfig(this PwEntry entry, ProtectedStringDictionary strings, ref List<string> configErrors, MatchAccuracyMethod mam)
         {
             if (strings == null)
                 strings = entry.Strings;
             EntryConfig conf = null;
             string json = strings.ReadSafe("KPRPC JSON");
             if (string.IsNullOrEmpty(json))
-                conf = new EntryConfig();
+                conf = new EntryConfig(mam);
             else
             {
                 try
@@ -39,7 +39,7 @@ namespace KeePassRPC
                     }
                     else
                     {
-                        MessageBox.Show("There are configuration errors in this entry. To fix the entry and prevent this warning message appearing, please edit the value of the 'KPRPC JSON' advanced string. Please ask for help on http://keefox.org/help/forum if you're not sure how to fix this. The URL of the entry is: " + url + " and the full configuration data is: " + json, "Warning: Configuration errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("There are configuration errors in this entry. To fix the entry and prevent this warning message appearing, please edit the value of the 'KPRPC JSON' advanced string. Please ask for help on https://forum.kee.pm if you're not sure how to fix this. The URL of the entry is: " + url + " and the full configuration data is: " + json, "Warning: Configuration errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                     return null;
                 }
@@ -47,22 +47,68 @@ namespace KeePassRPC
             return conf;
         }
 
-        public static EntryConfig GetKPRPCConfig(this PwEntry entry, ProtectedStringDictionary strings)
+        public static EntryConfig GetKPRPCConfig(this PwEntry entry, ProtectedStringDictionary strings, MatchAccuracyMethod mam)
         {
             List<string> dummy = null;
-            return entry.GetKPRPCConfig(strings, ref dummy);
+            return entry.GetKPRPCConfig(strings, ref dummy, mam);
         }
 
-        public static EntryConfig GetKPRPCConfig(this PwEntry entry)
+        public static EntryConfig GetKPRPCConfig(this PwEntry entry, MatchAccuracyMethod mam)
         {
             List<string> dummy = null;
-            return entry.GetKPRPCConfig(null, ref dummy);
+            return entry.GetKPRPCConfig(null, ref dummy, mam);
         }
 
         public static void SetKPRPCConfig(this PwEntry entry, EntryConfig newConfig)
         {
             entry.Strings.Set("KPRPC JSON", new ProtectedString(
                 true, Jayrock.Json.Conversion.JsonConvert.ExportToString(newConfig)));
+        }
+        
+        public static MatchAccuracyMethod GetMatchAccuracyMethod(this PwEntry entry, URLSummary urlsum, DatabaseConfig dbConf)
+        {
+            var conf = entry.GetKPRPCConfig(MatchAccuracyMethod.Domain);
+            MatchAccuracyMethod overridenMethod;
+            if (urlsum.Domain != null && urlsum.Domain.RegistrableDomain != null && dbConf.MatchedURLAccuracyOverrides.TryGetValue(urlsum.Domain.RegistrableDomain, out overridenMethod))
+                return overridenMethod;
+            else
+                return conf.GetMatchAccuracyMethod();
+        }
+
+        public static DatabaseConfig GetKPRPCConfig(this PwDatabase db)
+        {
+            if (!db.CustomData.Exists("KeePassRPC.Config"))
+            {
+                // Set custom data and migrate the old config custom data to this
+                // version (but don't save the DB - we can do this again and again until
+                // user decides to save a change for another reason)
+                var newConfig = new DatabaseConfig();
+
+                if (db.CustomData.Exists("KeePassRPC.KeeFox.rootUUID"))
+                    newConfig.RootUUID = db.CustomData.Get("KeePassRPC.KeeFox.rootUUID");
+
+                db.SetKPRPCConfig(newConfig);
+                return newConfig;
+            }
+            else
+            {
+                try
+                {
+                    return (DatabaseConfig)Jayrock.Json.Conversion.JsonConvert.Import(typeof(DatabaseConfig), db.CustomData.Get("KeePassRPC.Config"));
+                }
+                catch (Exception)
+                {
+                    // Reset to default config because the current stored config is corrupt
+                    var newConfig = new DatabaseConfig();
+                    db.SetKPRPCConfig(newConfig);
+                    return newConfig;
+                }
+            }
+        }
+
+        public static void SetKPRPCConfig(this PwDatabase db, DatabaseConfig newConfig)
+        {
+            db.CustomData.Set("KeePassRPC.Config", Jayrock.Json.Conversion.JsonConvert.ExportToString(newConfig));
         }
     }
 }
