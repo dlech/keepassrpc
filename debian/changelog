@@ -1,3 +1,18 @@
+keepassrpc (1.9.0~xenial1) xenial; urgency=medium
+
+  * Notify update checkers of the new version 1.8.0
+  * Enable DB open focus on Mono
+  * Add OpenAndFocusDatabase feature
+  * Remove legacy 2012-era config migration code
+  * Fix incorrect minimum match accuracy for entries with no config
+  * Earlier warning for users that delete their Home Group
+  * Add explanatory note to password backup entries
+  * Warn that changing port requires restart
+  * Update icon
+  * Log exceptions that occur during database conversion
+
+ -- David Lechner <david@lechnology.com>  Fri, 30 Aug 2019 15:02:03 -0500
+
 keepassrpc (1.8.0~xenial1) xenial; urgency=medium
 
   * Works with KeePass 2.39
