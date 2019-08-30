@@ -118,9 +118,6 @@
     <Reference Include="System.Security" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="KeePass">
-      <HintPath>\home\luckyrat\keepass-dev\KeePass.exe</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BigInteger.cs" />
@@ -260,20 +257,11 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Kee64.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\buttonGradient.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="KeePassRPCDiagram.cd" />
     <None Include="Resources\buttonGradientHover.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Kee16.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\kee.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(KeePassPluginDevToolsPath)Plgx.targets" />
@@ -284,206 +272,4 @@
     <Delete Files="$(OutDir)Fleck2.dll" />
     <Delete Files="$(OutDir)$(AssemblyName)$(TargetExt)" />
   </Target>
-  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
-    <PostBuildEvent>
-      echo POSTBUILDSTEP for $(ProjectName)
-
-      set KPDir=c:\Program Files (x86)\KeePass Password Safe 2 DEV\
-      set KPPDir=%25KPDir%25plugins\
-      set KPPTempDir=%25KPPDir%25$(ProjectName)
-
-      IF NOT "$(ConfigurationName)"=="Debug" Goto :NotDebug
-      REM In debug mode we want to move the generated DLLs and PDBs to the plugins
-      REM directory so we can easily set breakpoints, etc.
-
-      REM delete the PLGX from any previous ReleasePLGX build
-      del /Q "%25KPPDir%25$(ProjectName).plgx"
-      REM if errorlevel 1 goto BuildEventFailed
-      echo Release plgx deleted
-
-      REM copy output DLLs to KeePass plugins directory
-      copy "$(ProjectName).dll" "%25KPPDir%25\$(ProjectName).dll"
-      copy "$(ProjectName).pdb" "%25KPPDir%25\$(ProjectName).pdb"
-      if errorlevel 1 goto BuildEventFailed
-      copy "Jayrock.dll" "%25KPPDir%25\Jayrock.dll"
-      copy "Jayrock.Json.dll" "%25KPPDir%25\Jayrock.Json.dll"
-      copy "Fleck2.dll" "%25KPPDir%25\Fleck2.dll"
-      copy "DomainPublicSuffix.dll" "%25KPPDir%25\DomainPublicSuffix.dll"
-      if errorlevel 1 goto BuildEventFailed
-      echo Debug DLLs copied to plugins directory
-
-      goto BuildEventOK
-
-      :NotDebug
-      IF NOT "$(ConfigurationName)"=="ReleasePLGX" Goto :NotReleasePlgx
-      REM In release mode we want to make sure that we are working with the PLGX version.
-      REM This prevents debugging so should only be used when packaging a plgx file for
-      REM distribution.
-
-      REM delete the DLLs from any previous Debug build
-      del /Q "%25KPPDir%25$(ProjectName).dll"
-      if errorlevel 1 goto BuildEventFailed
-      del /Q "%25KPPDir%25\Jayrock.dll"
-      del /Q "%25KPPDir%25\Jayrock.Json.dll"
-      del /Q "%25KPPDir%25\Fleck2.dll"
-      del /Q "%25KPPDir%25\DomainPublicSuffix.dll"
-      if errorlevel 1 goto BuildEventFailed
-      echo Debug DLLs deleted
-
-      REM create temporary directory
-      rmdir /S /Q "%25KPPTempDir%25"
-      mkdir "%25KPPTempDir%25"
-      if errorlevel 1 goto BuildEventFailed
-      echo Temporary directory created
-
-      REM copy relevant project files to temporary directory
-      REM (for simple KeePass plugins you may need to
-      REM copy only *.cs files and .csproj file)
-      copy "Jayrock.dll" "%25KPPTempDir%25\Jayrock.dll"
-      copy "Jayrock.Json.dll" "%25KPPTempDir%25\Jayrock.Json.dll"
-      copy "Fleck2.dll" "%25KPPTempDir%25\Fleck2.dll"
-      copy "DomainPublicSuffix.dll" "%25KPPTempDir%25\DomainPublicSuffix.dll"
-      if errorlevel 1 goto BuildEventFailed
-      copy "$(ProjectDir)*.cs" "%25KPPTempDir%25"
-      if errorlevel 1 goto BuildEventFailed
-      copy "$(ProjectDir)$(ProjectName).csproj" "%25KPPTempDir%25\$(ProjectName).csproj"
-      if errorlevel 1 goto BuildEventFailed
-      mkdir "%25KPPTempDir%25\Forms"
-      copy "$(ProjectDir)Forms\*.cs" "%25KPPTempDir%25\Forms"
-      copy "$(ProjectDir)Forms\*.resx" "%25KPPTempDir%25\Forms"
-      if errorlevel 1 goto BuildEventFailed
-      mkdir "%25KPPTempDir%25\Properties"
-      copy "$(ProjectDir)Properties\AssemblyInfo.cs" "%25KPPTempDir%25\Properties\AssemblyInfo.cs"
-      copy "$(ProjectDir)Properties\Resources.resx" "%25KPPTempDir%25\Properties\Resources.resx"
-      copy "$(ProjectDir)Properties\Resources.Designer.cs" "%25KPPTempDir%25\Properties\Resources.Designer.cs"
-      mkdir "%25KPPTempDir%25\Resources"
-      copy "$(ProjectDir)Resources\*.png" "%25KPPTempDir%25\Resources"
-      copy "$(ProjectDir)Resources\*.ico" "%25KPPTempDir%25\Resources"
-      if errorlevel 1 goto BuildEventFailed
-      echo Files copied to temporary directory
-
-      REM create the PLGX
-      "%25KPDir%25KeePass.exe" --plgx-create "%25KPPTempDir%25" --plgx-prereq-kp:2.34
-      if errorlevel 1 goto BuildEventFailed
-      echo PLGX created
-
-      REM delete the temporary directory and its contents
-      rem rmdir /S /Q "%25KPPTempDir%25"
-      if errorlevel 1 goto BuildEventFailed
-      echo Temporary directory deleted
-
-      goto BuildEventOK
-
-
-      :NotReleasePlgx
-      echo Invalid configuration selected. Please choose a different build configuration
-      echo or modify the post-build script to add support for this configuration.
-
-      :BuildEventFailed
-      echo POSTBUILDSTEP for $(ProjectName) FAILED
-      exit 1
-
-      :BuildEventOK
-      echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
-  </PropertyGroup>
-    <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
-    <PostBuildEvent>
-      #!/bin/bash
-      echo POSTBUILDSTEP for $(ProjectName)
-
-      export KPDir="${HOME}/keepass-dev/"
-      export KPPDir=${KPDir}Plugins/
-      export KPPTempDir="${KPPDir}$(ProjectName)"
-            
-      # delete the PLGX from any previous ReleasePLGX build
-      rm -f "${KPPDir}$(ProjectName).plgx"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED; exit 1; fi
-      echo Release plgx deleted
-
-      # copy output DLLs to KeePass plugins directory
-      cp "$(ProjectName).dll" "${KPPDir}$(ProjectName).dll"
-      cp "$(ProjectName).pdb" "${KPPDir}$(ProjectName).pdb"
-      
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED; exit 1; fi
-            
-      cp "Jayrock.dll" "${KPPDir}Jayrock.dll"
-      cp "Jayrock.Json.dll" "${KPPDir}Jayrock.Json.dll"
-      cp "Fleck2.dll" "${KPPDir}Fleck2.dll"
-      cp "DomainPublicSuffix.dll" "${KPPDir}DomainPublicSuffix.dll"
-      
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED; exit 1; fi
-            
-      echo Debug DLLs copied to plugins directory
-
-      echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
-  </PropertyGroup>
-    <PropertyGroup Condition="'$(OS)' != 'Windows_NT' AND '$(ConfigurationName)' == 'ReleasePLGX'">
-    <PostBuildEvent>
-      #!/bin/bash
-      echo POSTBUILDSTEP for $(ProjectName)
-
-      export KPDir="${HOME}/keepass-dev/"
-      export KPPDir=${KPDir}Plugins/
-      export KPPTempDir="${KPPDir}$(ProjectName)"
-            
-      rm -f "${KPPDir}$(ProjectName).dll"
-      rm -f "${KPPDir}$(ProjectName).pdb"
-      rm -f "${KPPDir}\Jayrock.dll"
-      rm -f "${KPPDir}\Jayrock.Json.dll"
-      rm -f "${KPPDir}\Fleck2.dll"
-      rm -f "${KPPDir}\DomainPublicSuffix.dll"
-      echo Debug DLLs deleted
-      
-      # create temporary directory
-      rm -rf "${KPPTempDir}"
-      mkdir "${KPPTempDir}"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - prep temp dir; exit 1; fi
-      echo Temporary directory created
-            
-      cp "Jayrock.dll" "${KPPDir}Jayrock.dll"
-      cp "Jayrock.Json.dll" "${KPPDir}Jayrock.Json.dll"
-      cp "Fleck2.dll" "${KPPDir}Fleck2.dll"
-      cp "DomainPublicSuffix.dll" "${KPPDir}DomainPublicSuffix.dll"
-      
-      # copy relevant project files to temporary directory
-      # (for simple KeePass plugins you may need to
-      # copy only *.cs files and .csproj file)
-      cp "Jayrock.dll" "${KPPTempDir}\Jayrock.dll"
-      cp "Jayrock.Json.dll" "${KPPTempDir}\Jayrock.Json.dll"
-      cp "Fleck2.dll" "${KPPTempDir}\Fleck2.dll"
-      cp "DomainPublicSuffix.dll" "${KPPTempDir}\DomainPublicSuffix.dll"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - copy DLL deps; exit 1; fi
-            
-      cp "$(ProjectDir)"*.cs "${KPPTempDir}"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - copy source files; exit 1; fi
-      cp "$(ProjectDir)$(ProjectName).csproj" "${KPPTempDir}\$(ProjectName).csproj"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - copy csproj; exit 1; fi
-            
-      mkdir "${KPPTempDir}\Forms"
-      cp "$(ProjectDir)Forms\"*.cs "${KPPTempDir}\Forms"
-      cp "$(ProjectDir)Forms\"*.resx "${KPPTempDir}\Forms"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - copy forms sources; exit 1; fi
-            
-      mkdir "${KPPTempDir}\Properties"
-      cp "$(ProjectDir)Properties\AssemblyInfo.cs" "${KPPTempDir}\Properties\AssemblyInfo.cs"
-      cp "$(ProjectDir)Properties\Resources.resx" "${KPPTempDir}\Properties\Resources.resx"
-      cp "$(ProjectDir)Properties\Resources.Designer.cs" "${KPPTempDir}\Properties\Resources.Designer.cs"
-      mkdir "${KPPTempDir}\Resources"
-      cp "$(ProjectDir)Resources\"*.png "${KPPTempDir}\Resources"
-      cp "$(ProjectDir)Resources\"*.ico "${KPPTempDir}\Resources"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - copy properties and resources; exit 1; fi
-            
-      echo Files copied to temporary directory
-
-      # create the PLGX
-      "${KPDir}KeePass.exe" --plgx-create "${KPPTempDir}" --plgx-prereq-kp:2.34
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - create PLGX; exit 1; fi
-      echo PLGX created
-
-      rm -rf "${KPPTempDir}"
-      if [ $? = 1 ]; then echo POSTBUILDSTEP for $(ProjectName) FAILED - temp dir tidy up; exit 1; fi
-      echo Temporary directory deleted
-            
-      echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK</PostBuildEvent>
-  </PropertyGroup>
 </Project>
