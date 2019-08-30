@@ -257,11 +257,12 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\buttonGradient.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="KeePassRPCDiagram.cd" />
+    <None Include="Resources\buttonGradient.png" />
     <None Include="Resources\buttonGradientHover.png" />
+    <None Include="Resources\vkprpckey64.png" />
+    <None Include="Resources\vkprpckey16.png" />
+    <None Include="Resources\kprpc.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(KeePassPluginDevToolsPath)Plgx.targets" />
