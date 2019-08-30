@@ -67,7 +67,7 @@ namespace KeePassRPC
         
         public static MatchAccuracyMethod GetMatchAccuracyMethod(this PwEntry entry, URLSummary urlsum, DatabaseConfig dbConf)
         {
-            var conf = entry.GetKPRPCConfig(MatchAccuracyMethod.Domain);
+            var conf = entry.GetKPRPCConfig(dbConf.DefaultMatchAccuracy);
             MatchAccuracyMethod overridenMethod;
             if (urlsum.Domain != null && urlsum.Domain.RegistrableDomain != null && dbConf.MatchedURLAccuracyOverrides.TryGetValue(urlsum.Domain.RegistrableDomain, out overridenMethod))
                 return overridenMethod;
@@ -84,6 +84,7 @@ namespace KeePassRPC
                 // user decides to save a change for another reason)
                 var newConfig = new DatabaseConfig();
 
+                // This migration can be removed in 2021
                 if (db.CustomData.Exists("KeePassRPC.KeeFox.rootUUID"))
                     newConfig.RootUUID = db.CustomData.Get("KeePassRPC.KeeFox.rootUUID");
 
@@ -110,5 +111,12 @@ namespace KeePassRPC
         {
             db.CustomData.Set("KeePassRPC.Config", Jayrock.Json.Conversion.JsonConvert.ExportToString(newConfig));
         }
+
+        public static bool IsOrIsContainedIn(this PwGroup gp, PwGroup hostGroup)
+        {
+            if (gp == hostGroup) return true;
+            return gp.IsContainedIn(hostGroup);
+        }
+
     }
 }

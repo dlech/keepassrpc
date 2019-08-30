@@ -6,10 +6,8 @@ using System.Windows.Forms;
 using KeePass.Forms;
 using KeePassLib;
 using System.Collections;
-using System.Drawing;
 using KeePass.Resources;
 using KeePassLib.Serialization;
-using System.IO;
 using KeePassLib.Security;
 using KeePass.Plugins;
 using KeePassLib.Cryptography.PasswordGenerator;
@@ -29,8 +27,8 @@ namespace KeePassRPC
         KeePassRPCExt KeePassRPCPlugin;
         Version PluginVersion;
         IPluginHost host;
+        IconConverter iconConverter;
 
-        private string[] _standardIconsBase64;
         private bool _restartWarningShown = false;
 
         public KeePassRPCService(IPluginHost host, string[] standardIconsBase64, KeePassRPCExt plugin)
@@ -38,10 +36,10 @@ namespace KeePassRPC
             KeePassRPCPlugin = plugin;
             PluginVersion = KeePassRPCExt.PluginVersion;
             this.host = host;
-            _standardIconsBase64 = standardIconsBase64;
+            this.iconConverter = new IconConverter(host, KeePassRPCPlugin, standardIconsBase64);
         }
         #endregion
-        
+
         #region KeePass GUI routines
 
         /// <summary>
@@ -56,7 +54,7 @@ namespace KeePassRPC
                 //ensureDBisOpenEWH.Reset(); // ensures we will wait even if DB has been opened previously.
                 // maybe tiny opportunity for deadlock if user opens DB exactly between DB.IsOpen and this statement?
                 // TODO2: consider moving above statement to top of method - shouldn't do any harm and could rule out rare deadlock?
-                host.MainWindow.BeginInvoke((MethodInvoker)delegate { promptUserToOpenDB(null); });
+                host.MainWindow.BeginInvoke((MethodInvoker)delegate { promptUserToOpenDB(null, true); });
                 //ensureDBisOpenEWH.WaitOne(15000, false); // wait until DB has been opened
 
                 if (!host.Database.IsOpen)
@@ -65,22 +63,41 @@ namespace KeePassRPC
             return true;
         }
 
-        void promptUserToOpenDB(IOConnectionInfo ioci)
+        void promptUserToOpenDB(IOConnectionInfo ioci, bool returnFocus)
         {
             //TODO: find out z-index of firefox and push keepass just behind it rather than right to the back
             //TODO: focus open DB dialog box if it's there
 
-            IntPtr ffWindow = Native.GetForegroundWindow();
+            IntPtr ffWindow = IntPtr.Zero;
+            if (returnFocus) ffWindow = Native.GetForegroundWindowHandle();
             bool minimised = KeePass.Program.MainForm.WindowState == FormWindowState.Minimized;
             bool trayed = KeePass.Program.MainForm.IsTrayed();
 
             if (ioci == null)
                 ioci = KeePass.Program.Config.Application.LastUsedFile;
 
-            Native.AttachToActiveAndBringToForeground(KeePass.Program.MainForm.Handle);
+            if (!Native.IsUnix())
+            {
+                // We can't just Native.EnsureForegroundWindow() because most recent
+                // Windows versions just flash the taskbar rather than actually focus 
+                // the window without these shenanigans. We don't need to this.showOpenDB(ioci)
+                // because any appropriate "enter master key" dialog is triggered after 
+                // minimising and restoring the window
+                Native.AttachToActiveAndBringToForeground(KeePass.Program.MainForm.Handle);
+            }
+            else
+            {
+                Native.EnsureForegroundWindow(KeePass.Program.MainForm.Handle);
+                if (KeePass.Program.MainForm.IsFileLocked(null) && !KeePass.Program.MainForm.UIIsAutoUnlockBlocked())
+                {
+                    showOpenDB(ioci);
+                }
+
+            }
             KeePass.Program.MainForm.Activate();
 
-            // refresh the UI in case user cancelled the dialog box and/or KeePass native calls have left us in a bit of a weird state
+            // refresh the UI in case user cancelled the dialog box and/or KeePass 
+            // native calls have left us in a bit of a weird state
             host.MainWindow.UpdateUI(true, null, true, null, true, null, false);
 
             // Set the program state back to what is was unless the user has
@@ -100,7 +117,7 @@ namespace KeePassRPC
             }
 
             // Make Firefox active again
-            Native.EnsureForegroundWindow(ffWindow);
+            if (returnFocus) Native.EnsureForegroundWindow(ffWindow);
         }
 
         bool showOpenDB(IOConnectionInfo ioci)
@@ -109,7 +126,7 @@ namespace KeePassRPC
             if (KeePass.Program.MainForm.UIIsInteractionBlocked()) { return false; }
 
             // Make sure the login dialog (or options and other windows) are not already visible. Same behaviour as KP.
-            if (KeePass.UI.GlobalWindowManager.WindowCount != 0) return false;
+            if (GlobalWindowManager.WindowCount != 0) return false;
 
             // Prompt user to open database
             KeePass.Program.MainForm.OpenDatabase(ioci, null, false);
@@ -317,7 +334,7 @@ namespace KeePassRPC
                     string displayName = ff.Name;
                     string ffValue = ff.Value;
 
-                    if (ff.PlaceholderHandling == PlaceholderHandling.Enabled || 
+                    if (ff.PlaceholderHandling == PlaceholderHandling.Enabled ||
                         (ff.PlaceholderHandling == PlaceholderHandling.Default && dbDefaultPlaceholderHandlingEnabled))
                     {
                         enablePlaceholders = true;
@@ -347,7 +364,8 @@ namespace KeePassRPC
                     if (fullDetails)
                     {
                         formFieldList.Add(new FormField(ff.Name, displayName, derefValue, ff.Type, ff.Id, ff.Page, ff.PlaceholderHandling));
-                    } else
+                    }
+                    else
                     {
                         usernameName = "username";
                         usernameValue = derefValue;
@@ -392,7 +410,7 @@ namespace KeePassRPC
                 }
             }
 
-            string imageData = iconToBase64(pwe.CustomIconUuid, pwe.IconId);
+            string imageData = iconConverter.iconToBase64(pwe.CustomIconUuid, pwe.IconId);
             //Debug.WriteLine("GetEntryFromPwEntry icon converted: " + sw.Elapsed);
 
             if (fullDetails)
@@ -422,7 +440,7 @@ namespace KeePassRPC
                 KeePassLib.Utility.MemUtil.ByteArrayToHexString(pwe.Uuid.UuidBytes),
                 alwaysAutoFill, neverAutoFill, alwaysAutoSubmit, neverAutoSubmit, priority,
                 GetGroupFromPwGroup(pwe.ParentGroup), imageData,
-                GetDatabaseFromPwDatabase(db, false, true),matchAccuracy);
+                GetDatabaseFromPwDatabase(db, false, true), matchAccuracy);
                 return kpe;
             }
             else
@@ -439,7 +457,7 @@ namespace KeePassRPC
             //Debug.Indent();
             //Stopwatch sw = Stopwatch.StartNew();
 
-            string imageData = iconToBase64(pwg.CustomIconUuid, pwg.IconId);
+            string imageData = iconConverter.iconToBase64(pwg.CustomIconUuid, pwg.IconId);
 
             Group kpg = new Group(pwg.Name, KeePassLib.Utility.MemUtil.ByteArrayToHexString(pwg.Uuid.UuidBytes), imageData, pwg.GetFullPath("/", false));
 
@@ -451,27 +469,35 @@ namespace KeePassRPC
 
         private Database GetDatabaseFromPwDatabase(PwDatabase pwd, bool fullDetail, bool noDetail)
         {
-            //Debug.Indent();
-            // Stopwatch sw = Stopwatch.StartNew();
-            if (fullDetail && noDetail)
-                throw new ArgumentException("Don't be silly");
+            try {
+                //Debug.Indent();
+                // Stopwatch sw = Stopwatch.StartNew();
+                if (fullDetail && noDetail)
+                    throw new ArgumentException("Don't be silly");
 
-            PwGroup pwg = GetRootPwGroup(pwd);
-            Group rt = GetGroupFromPwGroup(pwg);
-            if (fullDetail)
-                rt.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetail, true);
-            else if (!noDetail)
-                rt.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetail, true);
+                PwGroup pwg = GetRootPwGroup(pwd);
+                Group rt = GetGroupFromPwGroup(pwg);
+                if (fullDetail)
+                    rt.ChildEntries = (Entry[])GetChildEntries(pwd, pwg, fullDetail, true);
+                else if (!noDetail)
+                    rt.ChildLightEntries = GetChildEntries(pwd, pwg, fullDetail, true);
 
-            if (!noDetail)
-                rt.ChildGroups = GetChildGroups(pwd, pwg, true, fullDetail);
+                if (!noDetail)
+                    rt.ChildGroups = GetChildGroups(pwd, pwg, true, fullDetail);
 
-            Database kpd = new Database(pwd.Name, pwd.IOConnectionInfo.Path, rt, (pwd == host.Database) ? true : false,
-                DataExchangeModel.IconCache<string>.GetIconEncoding(pwd.IOConnectionInfo.Path) ?? "");
-            //  sw.Stop();
-            //  Debug.WriteLine("GetDatabaseFromPwDatabase execution time: " + sw.Elapsed);
-            //  Debug.Unindent();
-            return kpd;
+                Database kpd = new Database(pwd.Name, pwd.IOConnectionInfo.Path, rt, (pwd == host.Database) ? true : false,
+                    IconCache<string>.GetIconEncoding(pwd.IOConnectionInfo.Path) ?? "");
+                //  sw.Stop();
+                //  Debug.WriteLine("GetDatabaseFromPwDatabase execution time: " + sw.Elapsed);
+                //  Debug.Unindent();
+                return kpd;
+            }
+            catch (Exception ex)
+            {
+                if (KeePassRPCPlugin.logger != null)
+                    KeePassRPCPlugin.logger.WriteLine("Failed to parse database. Exception: " + ex);
+                return null;
+            }
         }
 
         private void setPwEntryFromEntry(PwEntry pwe, Entry login)
@@ -539,7 +565,7 @@ namespace KeePassRPC
             PwIcon iconId = PwIcon.Key;
             if (login.IconImageData != null
                 && login.IconImageData.Length > 0
-                && base64ToIcon(login.IconImageData, ref customIconUUID, ref iconId))
+                && iconConverter.base64ToIcon(login.IconImageData, ref customIconUUID, ref iconId))
             {
                 if (customIconUUID == PwUuid.Zero)
                     pwe.IconId = iconId;
@@ -550,168 +576,6 @@ namespace KeePassRPC
             pwe.SetKPRPCConfig(conf);
         }
 
-        private string dbIconToBase64(PwDatabase db)
-        {
-            string cachedBase64 = DataExchangeModel.IconCache<string>.GetIconEncoding(db.IOConnectionInfo.Path);
-            if (string.IsNullOrEmpty(cachedBase64))
-            {
-                // Don't think this should ever happen but we'll return a null icon if we have to
-                return "";
-            }
-            else
-            {
-                return cachedBase64;
-            }
-        }
-
-        /// <summary>
-        /// extract the current icon information for this entry
-        /// </summary>
-        /// <param name="customIconUUID"></param>
-        /// <param name="iconId"></param>
-        /// <returns></returns>
-        private string iconToBase64(PwUuid customIconUUID, PwIcon iconId)
-        {
-            Image icon = null;
-            PwUuid uuid = null;
-
-            string imageData = "";
-            if (customIconUUID != PwUuid.Zero)
-            {
-                string cachedBase64 = DataExchangeModel.IconCache<PwUuid>.GetIconEncoding(customIconUUID);
-                if (string.IsNullOrEmpty(cachedBase64))
-                {
-                    object[] delParams = { customIconUUID };
-                    object invokeResult = host.MainWindow.Invoke(
-                        new KeePassRPCExt.GetCustomIconDelegate(
-                            KeePassRPCPlugin.GetCustomIcon), delParams);
-                    if (invokeResult != null)
-                    {
-                        icon = (Image)invokeResult;
-                    }
-                    if (icon != null)
-                    {
-                        uuid = customIconUUID;
-                    }
-                }
-                else
-                {
-                    return cachedBase64;
-                }
-            }
-
-            // this happens if we didn't want to or couldn't find a custom icon
-            if (icon == null)
-            {
-                int iconIdInt = (int)iconId;
-                uuid = new PwUuid(new byte[]{
-                    (byte)(iconIdInt & 0xFF), (byte)(iconIdInt & 0xFF),
-                    (byte)(iconIdInt & 0xFF), (byte)(iconIdInt & 0xFF),
-                    (byte)(iconIdInt >> 8 & 0xFF), (byte)(iconIdInt >> 8 & 0xFF),
-                    (byte)(iconIdInt >> 8 & 0xFF), (byte)(iconIdInt >> 8 & 0xFF),
-                    (byte)(iconIdInt >> 16 & 0xFF), (byte)(iconIdInt >> 16 & 0xFF),
-                    (byte)(iconIdInt >> 16 & 0xFF), (byte)(iconIdInt >> 16 & 0xFF),
-                    (byte)(iconIdInt >> 24 & 0xFF), (byte)(iconIdInt >> 24 & 0xFF),
-                    (byte)(iconIdInt >> 24 & 0xFF), (byte)(iconIdInt >> 24 & 0xFF)
-                });
-
-                string cachedBase64 = DataExchangeModel.IconCache<PwUuid>.GetIconEncoding(uuid);
-                if (string.IsNullOrEmpty(cachedBase64))
-                {
-                    object[] delParams = { (int)iconId };
-                    object invokeResult = host.MainWindow.Invoke(
-                        new KeePassRPCExt.GetIconDelegate(
-                            KeePassRPCPlugin.GetIcon), delParams);
-                    if (invokeResult != null)
-                    {
-                        icon = (Image)invokeResult;
-                    }
-                }
-                else
-                {
-                    return cachedBase64;
-                }
-            }
-
-
-            if (icon != null)
-            {
-                // we found an icon but it wasn't in the cache so lets
-                // calculate its base64 encoding and then add it to the cache
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    icon.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                    imageData = Convert.ToBase64String(ms.ToArray());
-                }
-                DataExchangeModel.IconCache<PwUuid>.AddIcon(uuid, imageData);
-            }
-
-            return imageData;
-        }
-
-        /// <summary>
-        /// converts a string to the relevant icon for this entry
-        /// </summary>
-        /// <param name="imageData">base64 representation of the image</param>
-        /// <param name="customIconUUID">UUID of the generated custom icon; may be Zero</param>
-        /// <param name="iconId">PwIcon of the matched standard icon; ignore if customIconUUID != Zero</param>
-        /// <returns>true if the supplied imageData was converted into a customIcon 
-        /// or matched with a standard icon.</returns>
-        private bool base64ToIcon(string imageData, ref PwUuid customIconUUID, ref PwIcon iconId)
-        {
-            iconId = PwIcon.Key;
-            customIconUUID = PwUuid.Zero;
-
-            for (int i = 0; i < _standardIconsBase64.Length; i++)
-            {
-                string item = _standardIconsBase64[i];
-                if (item == imageData)
-                {
-                    iconId = (PwIcon)i;
-                    return true;
-                }
-            }
-
-            try
-            {
-                //MemoryStream id = new MemoryStream();
-                //icon.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-
-                using (Image img = KeePass.UI.UIUtil.LoadImage(Convert.FromBase64String(imageData)))
-                using (Image imgNew = new Bitmap(img, new Size(16, 16)))
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    imgNew.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-
-                    byte[] msByteArray = ms.ToArray();
-
-                    foreach (PwCustomIcon item in host.Database.CustomIcons)
-                    {
-                        // re-use existing custom icon if it's already in the database
-                        // (This will probably fail if database is used on 
-                        // both 32 bit and 64 bit machines - not sure why...)
-                        if (KeePassLib.Utility.MemUtil.ArraysEqual(msByteArray, item.ImageDataPng))
-                        {
-                            customIconUUID = item.Uuid;
-                            host.Database.UINeedsIconUpdate = true;
-                            return true;
-                        }
-                    }
-                    PwCustomIcon pwci = new PwCustomIcon(new PwUuid(true), msByteArray);
-                    host.Database.CustomIcons.Add(pwci);
-
-                    customIconUUID = pwci.Uuid;
-                    host.Database.UINeedsIconUpdate = true;
-
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
 
         #endregion
 
@@ -739,7 +603,7 @@ namespace KeePassRPC
             string MonoVersion = "unknown";
             // No point in outputting KeePassRPC version here since we know it has
             // to match in order to be able to call this function
-            
+
             NETCLR = Environment.Version.Major.ToString();
             KeePassVersion = PwDefs.VersionString;
 
@@ -769,12 +633,12 @@ namespace KeePassRPC
 
                 // v3.0 is of no interest to us and difficult to detect so we ignore
                 // it and bundle those users in the v2 group
-                NETversion = 
-                    IsNet451OrNewer() ? "4.5.1" : 
-                    IsNet45OrNewer() ? "4.5" : 
-                    NETCLR == "4" ? "4.0" : 
+                NETversion =
+                    IsNet451OrNewer() ? "4.5.1" :
+                    IsNet45OrNewer() ? "4.5" :
+                    NETCLR == "4" ? "4.0" :
                     IsNet35OrNewer() ? "3.5" :
-                    NETCLR == "2" ? "2.0" : 
+                    NETCLR == "2" ? "2.0" :
                     "unknown";
             }
 
@@ -786,7 +650,7 @@ namespace KeePassRPC
         {
             return Type.GetType("System.GCCollectionMode", false) != null;
         }
-        
+
         public static bool IsNet45OrNewer()
         {
             return Type.GetType("System.Reflection.ReflectionContext", false) != null;
@@ -817,6 +681,18 @@ namespace KeePassRPC
         }
 
         /// <summary>
+        /// Focuses KeePass with a database, opening it first if required
+        /// </summary>
+        /// <param name="fileName">Path to database to open. If empty, user is prompted to choose a file</param>
+        [JsonRpcMethod]
+        public void OpenAndFocusDatabase(string fileName)
+        {
+            IOConnectionInfo ioci = SelectActiveDatabase(fileName);
+            OpenIfRequired(ioci, false);
+            return;
+        }
+
+        /// <summary>
         /// changes current active database
         /// </summary>
         /// <param name="fileName">Path to database to open. If empty, user is prompted to choose a file</param>
@@ -830,11 +706,18 @@ namespace KeePassRPC
                 host.MainWindow.DocumentManager.CloseDatabase(host.MainWindow.DocumentManager.ActiveDatabase);
             }
 
-            KeePassLib.Serialization.IOConnectionInfo ioci = null;
+            IOConnectionInfo ioci = SelectActiveDatabase(fileName);
+            OpenIfRequired(ioci, true);
+            return;
+        }
 
-            if (fileName != null && fileName.Length > 0)
+        private IOConnectionInfo SelectActiveDatabase(string fileName)
+        {
+            IOConnectionInfo ioci = null;
+
+            if (!string.IsNullOrEmpty(fileName))
             {
-                ioci = new KeePassLib.Serialization.IOConnectionInfo();
+                ioci = new IOConnectionInfo();
                 ioci.Path = fileName;
                 ioci = CompleteConnectionInfoUsingMru(ioci);
             }
@@ -855,8 +738,6 @@ namespace KeePassRPC
                         (doc.Database.IsOpen && doc.Database.IOConnectionInfo.Path == fileName))
                         host.MainWindow.DocumentManager.ActiveDocument = doc;
 
-            // Going to take a new approach for a bit to see how it works out...
-            //
             // before explicitly asking user to log into the correct DB we'll set up a "fake" document in KeePass
             // in the hope that the minimise/restore trick will get KeePass to prompt the user on our behalf
             // (regardless of state of existing documents and newly requested document)
@@ -865,15 +746,15 @@ namespace KeePassRPC
                 && !(!host.MainWindow.DocumentManager.ActiveDocument.Database.IsOpen && host.MainWindow.DocumentManager.ActiveDocument.LockedIoc.Path == fileName))
             {
                 PwDocument doc = host.MainWindow.DocumentManager.CreateNewDocument(true);
-                //IOConnectionInfo ioci = new IOConnectionInfo();
-                //ioci.Path = fileName;
                 doc.LockedIoc = ioci;
             }
 
-            // NB: going to modify implementation of the following function call so that only KeePass initiates the prompt (need to verify cross-platform, etc. even if it seems to work on win7x64)
-            // if it works on some platforms, I will make it work on all platforms that support it and fall back to the old clunky method for others.
-            host.MainWindow.BeginInvoke((MethodInvoker)delegate { promptUserToOpenDB(ioci); });
-            return;
+            return ioci;
+        }
+
+        private void OpenIfRequired(IOConnectionInfo ioci, bool returnFocus)
+        {
+            host.MainWindow.BeginInvoke((MethodInvoker)delegate { promptUserToOpenDB(ioci, returnFocus); });
         }
 
         /// <summary>
@@ -916,7 +797,7 @@ namespace KeePassRPC
         public string GeneratePassword(string profileName, string url)
         {
             PwProfile profile = null;
-            
+
             if (string.IsNullOrEmpty(profileName))
                 profile = KeePass.Program.Config.PasswordGenerator.LastUsedProfile;
             else
@@ -941,7 +822,7 @@ namespace KeePassRPC
 
             if (host.CustomConfig.GetBool("KeePassRPC.KeeFox.backupNewPasswords", true))
                 AddPasswordBackupLogin(password, url);
-            
+
             return password;
         }
 
@@ -953,6 +834,11 @@ namespace KeePassRPC
             PwDatabase chosenDB = SelectDatabase("");
             var parentGroup = KeePassRPCPlugin.GetAndInstallKeePasswordBackupGroup(chosenDB);
 
+            string explanatoryNote = "This entry is a backup of a password generated by Kee. " +
+                "It is not visible to Kee. You can edit it to make it visible but we recommend " +
+                "instead saving a new entry after you next sign in to the website. You can " +
+                "delete this backup when you are sure that you can sign-in to the website " +
+                "correctly using your new password.";
             PwEntry newLogin = new PwEntry(true, true);
             newLogin.Strings.Set(PwDefs.TitleField, new ProtectedString(
                 chosenDB.MemoryProtection.ProtectTitle, "Kee generated password at: " + DateTime.Now));
@@ -960,6 +846,7 @@ namespace KeePassRPC
                 chosenDB.MemoryProtection.ProtectUrl, url));
             newLogin.Strings.Set(PwDefs.PasswordField, new ProtectedString(
                 chosenDB.MemoryProtection.ProtectPassword, password));
+            newLogin.Strings.Set(PwDefs.NotesField, new ProtectedString(chosenDB.MemoryProtection.ProtectNotes, explanatoryNote));
             EntryConfig conf = new EntryConfig(MatchAccuracyMethod.Hostname);
             conf.Hide = true;
             newLogin.SetKPRPCConfig(conf);
@@ -1219,7 +1106,7 @@ namespace KeePassRPC
                 throw new ArgumentException("oldLoginUUID was not passed to the updateLogin function");
             if (string.IsNullOrEmpty(dbFileName))
                 throw new ArgumentException("dbFileName was not passed to the updateLogin function");
-            
+
             // Make sure there is an active database
             if (!ensureDBisOpen()) return null;
 
@@ -1307,7 +1194,7 @@ namespace KeePassRPC
             destination.Strings.Set("URL", new ProtectedString(host.Database.MemoryProtection.ProtectUrl, destURLs[0]));
             destConfig.AltURLs = new string[0];
             if (destURLs.Count > 1)
-                destConfig.AltURLs = destURLs.GetRange(1,destURLs.Count-1).ToArray();
+                destConfig.AltURLs = destURLs.GetRange(1, destURLs.Count - 1).ToArray();
 
             destination.SetKPRPCConfig(destConfig);
             destination.Touch(true);
@@ -1435,6 +1322,10 @@ namespace KeePassRPC
                 if (matchedGroup == null)
                     throw new Exception("Could not find requested group. Have you deleted your Kee home group? Set a new one and try again.");
 
+                var rid = host.Database.RecycleBinUuid;
+                if (rid != null && rid != PwUuid.Zero && matchedGroup.IsOrIsContainedIn(host.Database.RootGroup.FindGroup(rid, true)))
+                    throw new Exception("Kee home group is in the Recycle Bin. Restore the group or set a new home group and try again.");
+
                 return matchedGroup;
             }
             else
@@ -1477,16 +1368,9 @@ namespace KeePassRPC
             return dbarray;
         }
 
-        private bool ConfigIsCorrectVersion(PwDatabase t)
+        private bool ConfigIsCorrectVersion(PwDatabase db)
         {
-            // Both version 2 and 3 are correct since their differences 
-            // do not extend to the public API exposed by KPRPC
-            if (t.CustomData.Exists("KeePassRPC.KeeFox.configVersion") 
-                && t.CustomData.Get("KeePassRPC.KeeFox.configVersion") == "2")
-            {
-                return true;
-            }
-            else if (t.GetKPRPCConfig().Version == 3)
+            if (db.GetKPRPCConfig().Version == 3)
             {
                 return true;
             }
@@ -1560,7 +1444,7 @@ namespace KeePassRPC
                 }
             }
 
-            allEntries.Sort(delegate(Entry e1, Entry e2)
+            allEntries.Sort(delegate (Entry e1, Entry e2)
             {
                 return e1.Title.CompareTo(e2.Title);
             });
@@ -1678,7 +1562,7 @@ namespace KeePassRPC
 
                 if (fullDetails)
                 {
-                    allEntries.Sort(delegate(Entry e1, Entry e2)
+                    allEntries.Sort(delegate (Entry e1, Entry e2)
                     {
                         return e1.Title.CompareTo(e2.Title);
                     });
@@ -1686,7 +1570,7 @@ namespace KeePassRPC
                 }
                 else
                 {
-                    allLightEntries.Sort(delegate(LightEntry e1, LightEntry e2)
+                    allLightEntries.Sort(delegate (LightEntry e1, LightEntry e2)
                     {
                         return e1.Title.CompareTo(e2.Title);
                     });
@@ -1748,7 +1632,7 @@ namespace KeePassRPC
                 allGroups.Add(kpg);
             }
 
-            allGroups.Sort(delegate(Group g1, Group g2)
+            allGroups.Sort(delegate (Group g1, Group g2)
             {
                 return g1.Title.CompareTo(g2.Title);
             });
@@ -1792,7 +1676,10 @@ namespace KeePassRPC
             return 0;
         }
 
-        // Must match host name; if allowHostnameOnlyMatch is false, exact URL must be matched
+        // We can't just use the MatchAccuracyMethod found for the entry (in the conf parameter)
+        // because the actual MAM to apply may have been modified based upon the specific URL(s) that
+        // we're being asked to match against (the URLs shown in the browser rather than those 
+        // contained within the entry)
         public static int BestMatchAccuracyForAnyURL(PwEntry pwe, EntryConfig conf, string url, URLSummary urlSummary, MatchAccuracyMethod mam)
         {
             int bestMatchSoFar = MatchAccuracy.None;
@@ -1836,9 +1723,9 @@ namespace KeePassRPC
                 if (mam == MatchAccuracyMethod.Hostname || entryUrlSummary.Domain == null || urlSummary.Domain == null)
                     continue;
 
-                if (bestMatchSoFar < MatchAccuracy.Hostname
+                if (bestMatchSoFar < MatchAccuracy.HostnameExcludingPort
                     && entryUrlSummary.Domain.Hostname == urlSummary.Domain.Hostname)
-                    bestMatchSoFar = MatchAccuracy.Hostname;
+                    bestMatchSoFar = MatchAccuracy.HostnameExcludingPort;
 
                 if (bestMatchSoFar < MatchAccuracy.Domain
                     && entryUrlSummary.Domain.RegistrableDomain == urlSummary.Domain.RegistrableDomain)
@@ -1871,7 +1758,7 @@ namespace KeePassRPC
         /// <returns>An entry suitable for use by a JSON-RPC client.</returns>
         [JsonRpcMethod]
         public Entry[] FindLogins(string[] unsanitisedURLs, string actionURL,
-            string httpRealm, LoginSearchType lst, bool requireFullURLMatches, 
+            string httpRealm, LoginSearchType lst, bool requireFullURLMatches,
             string uniqueID, string dbFileName, string freeTextSearch, string username)
         {
             List<PwDatabase> dbs = null;
@@ -1936,7 +1823,7 @@ namespace KeePassRPC
                     sp.SearchInTags = true;
 
                     searchGroup.SearchEntries(sp, output);
-                    
+
                     foreach (PwEntry pwe in output)
                     {
                         Entry kpe = (Entry)GetEntryFromPwEntry(pwe, MatchAccuracy.None, true, db);
@@ -1992,7 +1879,7 @@ namespace KeePassRPC
                         entryUserName = KeePassRPCPlugin.GetPwEntryStringFromDereferencableValue(pwe, entryUserName, db);
                         if (EntryIsInRecycleBin(pwe, db))
                             continue; // ignore if it's in the recycle bin
-                        
+
                         EntryConfig conf = pwe.GetKPRPCConfig(null, ref configErrors, dbConf.DefaultMatchAccuracy);
 
                         if (conf == null || conf.Hide)
@@ -2038,8 +1925,8 @@ namespace KeePassRPC
 
                         // Check for matching URLs for the HTTP Auth containing the form
                         if (!entryIsAMatch && lst != LoginSearchType.LSTnoRealms
-                                && (string.IsNullOrEmpty(username) || username == entryUserName)) 
-                            
+                                && (string.IsNullOrEmpty(username) || username == entryUserName))
+
                         {
                             foreach (string URL in URLs)
                             {
@@ -2096,7 +1983,7 @@ namespace KeePassRPC
                         MessageBox.Show("There are configuration errors in your database called '" + db.Name + "'. To fix the entries listed below and prevent this warning message appearing, please edit the value of the 'KeePassRPC JSON config' advanced string. Please ask for help on https://forum.kee.pm if you're not sure how to fix this. These entries are affected:" + Environment.NewLine + string.Join(Environment.NewLine, configErrors.ToArray()), "Warning: Configuration errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
-            allEntries.Sort(delegate(Entry e1, Entry e2)
+            allEntries.Sort(delegate (Entry e1, Entry e2)
             {
                 return e1.Title.CompareTo(e2.Title);
             });
