@@ -1,3 +1,5 @@
 tar-ignore=.*
 tar-ignore=*.cache
+tar-ignore=Jayrock/samples/*
+tar-ignore=Jayrock/tools/*
 extend-diff-ignore=.*\.cache
