@@ -15,7 +15,7 @@ Vcs-Browser: https://github.com/dlech/keepassrpc
 Package: keepass2-plugin-rpc
 Architecture: all
 Depends: keepass2 (>= 2.34),
-         mono-dmcs,
+         mono-mcs,
          libmono-system-management4.0-cil,
          libmono-system-numerics4.0-cil,
          ${misc:Depends}
