@@ -1,3 +1,11 @@
+keepassrpc (1.9.0+ppa1) focal; urgency=medium
+
+  * debian: fix dependency on mono-mcs
+  * debian: update packaging version
+  * debian: ignore some binary files from upload
+
+ -- David Lechner <david@lechnology.com>  Sat, 06 Jun 2020 19:37:38 -0500
+
 keepassrpc (1.9.0~xenial1) xenial; urgency=medium
 
   * Notify update checkers of the new version 1.8.0
