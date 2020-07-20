@@ -1,3 +1,21 @@
+keepassrpc (1.11.0+ppa1) focal; urgency=medium
+
+  [ luckyrat ]
+  * Enable 1.9.0 update check notification
+  * Improve accuracy of some hostname matching with no Domain
+
+  [ David Lechner ]
+  * Fix icon resources (#84)
+
+  [ luckyrat ]
+  * Read and write field display name
+  * Set entry Title when updating an entry
+  * Allow replacement of all URLs during entry update
+  * Remove duplicate code for matching URLs using old LoginSearchType param
+  * Bump to v1.11.0
+
+ -- David Lechner <david@lechnology.com>  Mon, 20 Jul 2020 11:50:06 -0500
+
 keepassrpc (1.9.0+ppa1) focal; urgency=medium
 
   * debian: fix dependency on mono-mcs
