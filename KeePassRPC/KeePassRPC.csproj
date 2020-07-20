@@ -260,9 +260,6 @@
     <None Include="KeePassRPCDiagram.cd" />
     <None Include="Resources\buttonGradient.png" />
     <None Include="Resources\buttonGradientHover.png" />
-    <None Include="Resources\vkprpckey64.png" />
-    <None Include="Resources\vkprpckey16.png" />
-    <None Include="Resources\kprpc.ico" />
     <None Include="Resources\kprpc.ico" />
     <None Include="Resources\vkprpckey64.png" />
     <None Include="Resources\vkprpckey16.png" />
