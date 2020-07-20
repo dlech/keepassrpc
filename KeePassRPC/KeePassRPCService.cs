@@ -331,7 +331,7 @@ namespace KeePassRPC
                         continue;
 
                     bool enablePlaceholders = false;
-                    string displayName = ff.Name;
+                    string displayName = !string.IsNullOrEmpty(ff.DisplayName) ? ff.DisplayName : ff.Name;
                     string ffValue = ff.Value;
 
                     if (ff.PlaceholderHandling == PlaceholderHandling.Enabled ||
@@ -523,7 +523,7 @@ namespace KeePassRPC
                 }
                 else
                 {
-                    ffl.Add(new FormField(kpff.Name, kpff.Name, kpff.Value, kpff.Type, kpff.Id, kpff.Page, PlaceholderHandling.Default));
+                    ffl.Add(new FormField(kpff.Name, !string.IsNullOrEmpty(kpff.DisplayName) ? kpff.DisplayName : kpff.Name, kpff.Value, kpff.Type, kpff.Id, kpff.Page, PlaceholderHandling.Default));
                 }
             }
             conf.FormFieldList = ffl.ToArray();
@@ -1094,7 +1094,8 @@ namespace KeePassRPC
         /// <param name="urlMergeMode">1= Replace the entry's URL (but still fill forms if you visit the old URL)
         ///2= Replace the entry's URL (delete the old URL completely)
         ///3= Keep the old entry's URL (but still fill forms if you visit the new URL)
-        ///4= Keep the old entry's URL (don't add the new URL to the entry)</param>
+        ///4= Keep the old entry's URL (don't add the new URL to the entry)
+        ///5= No merge. Delete all URLs and replace with those supplied in the new entry data</param>
         /// <param name="dbFileName">Database that contains the login to update</param>
         /// <returns>The updated login</returns>
         [JsonRpcMethod]
@@ -1144,6 +1145,8 @@ namespace KeePassRPC
 
             destination.CreateBackup(db);
 
+            destination.Strings.Set("Title", new ProtectedString(
+                host.Database.MemoryProtection.ProtectTitle, source.Strings.ReadSafe("Title")));
             destConfig.HTTPRealm = sourceConfig.HTTPRealm;
             destination.IconId = source.IconId;
             destination.CustomIconUuid = source.CustomIconUuid;
@@ -1185,6 +1188,11 @@ namespace KeePassRPC
                     }
                     break;
                 case 4:
+                    // No changes to URLs
+                    break;
+                case 5:
+                    destURLs = sourceURLs;
+                    break;
                 default:
                     // No changes to URLs
                     break;
@@ -1720,8 +1728,18 @@ namespace KeePassRPC
                 // If we need at least a matching hostname and port (equivelent to
                 // KeeFox <1.5) or we are missing the information needed to match
                 // more loose components of the URL we have to skip these last tests
-                if (mam == MatchAccuracyMethod.Hostname || entryUrlSummary.Domain == null || urlSummary.Domain == null)
+                if (mam == MatchAccuracyMethod.Hostname) continue;
+
+                if (entryUrlSummary.Domain == null || urlSummary.Domain == null)
+                {
+                    if (bestMatchSoFar < MatchAccuracy.HostnameExcludingPort
+                        && !string.IsNullOrWhiteSpace(entryUrlSummary.HostnameOnly)
+                        && entryUrlSummary.HostnameOnly == urlSummary.HostnameOnly)
+                    {
+                        return MatchAccuracy.HostnameExcludingPort;
+                    }
                     continue;
+                }
 
                 if (bestMatchSoFar < MatchAccuracy.HostnameExcludingPort
                     && entryUrlSummary.Domain.Hostname == urlSummary.Domain.Hostname)
@@ -1909,9 +1927,7 @@ namespace KeePassRPC
                                     }
                                 }
 
-                        // Check for matching URLs for the page containing the form
-                        if (!entryIsAMatch && lst != LoginSearchType.LSTnoForms
-                                && (string.IsNullOrEmpty(username) || username == entryUserName))
+                        if (!entryIsAMatch && (string.IsNullOrEmpty(username) || username == entryUserName))
                         {
                             foreach (string URL in URLs)
                             {
@@ -1920,20 +1936,6 @@ namespace KeePassRPC
                                 if (accuracy > bestMatchAccuracy)
                                     bestMatchAccuracy = accuracy;
 
-                            }
-                        }
-
-                        // Check for matching URLs for the HTTP Auth containing the form
-                        if (!entryIsAMatch && lst != LoginSearchType.LSTnoRealms
-                                && (string.IsNullOrEmpty(username) || username == entryUserName))
-
-                        {
-                            foreach (string URL in URLs)
-                            {
-                                var mam = pwe.GetMatchAccuracyMethod(URLHostnameAndPorts[URL], dbConf);
-                                int accuracy = BestMatchAccuracyForAnyURL(pwe, conf, URL, URLHostnameAndPorts[URL], mam);
-                                if (accuracy > bestMatchAccuracy)
-                                    bestMatchAccuracy = accuracy;
                             }
                         }
 
