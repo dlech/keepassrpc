@@ -215,6 +215,7 @@
     <Compile Include="Utils.cs" />
     <Compile Include="DPIScaledToolStripMenuItem.cs" />
     <Compile Include="IconConverter.cs" />
+    <Compile Include="WebSocketServerConfig.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Forms\AuthForm.resx">
@@ -263,6 +264,9 @@
     <None Include="Resources\vkprpckey64.png" />
     <None Include="Resources\vkprpckey16.png" />
     <None Include="Resources\kprpc.ico" />
+    <None Include="Resources\kprpc.ico" />
+    <None Include="Resources\vkprpckey64.png" />
+    <None Include="Resources\vkprpckey16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(KeePassPluginDevToolsPath)Plgx.targets" />
