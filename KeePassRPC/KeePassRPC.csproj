@@ -215,6 +215,7 @@
     <Compile Include="Utils.cs" />
     <Compile Include="DPIScaledToolStripMenuItem.cs" />
     <Compile Include="IconConverter.cs" />
+    <Compile Include="WebSocketServerConfig.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Forms\AuthForm.resx">
