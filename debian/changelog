@@ -1,3 +1,13 @@
+keepassrpc (1.12.1+ppa1) focal; urgency=medium
+
+  [ luckyrat ]
+  * Remove duplicate code in SRP Setup
+  * Reject SRP client if A%N is 0
+  * Prohibit websocket connections from origins that are not known browser extension contexts
+  * Switch remaining uses of Random to RNGCryptoServiceProvider
+
+ -- David Lechner <david@lechnology.com>  Wed, 29 Jul 2020 14:35:00 -0500
+
 keepassrpc (1.11.0+ppa2) focal; urgency=medium
 
   * remove duplicate resources
