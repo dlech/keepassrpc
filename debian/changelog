@@ -1,3 +1,23 @@
+keepassrpc (1.12.1+xenial1) xenial; urgency=medium
+
+  [ luckyrat ]
+  * Improve accuracy of some hostname matching with no Domain
+
+  [ David Lechner ]
+  * Fix icon resources (#84)
+
+  [ luckyrat ]
+  * Read and write field display name
+  * Set entry Title when updating an entry
+  * Allow replacement of all URLs during entry update
+  * Remove duplicate code for matching URLs using old LoginSearchType param
+  * Remove duplicate code in SRP Setup
+  * Reject SRP client if A%N is 0
+  * Prohibit websocket connections from origins that are not known browser extension contexts
+  * Switch remaining uses of Random to RNGCryptoServiceProvider
+
+ -- David Lechner <david@lechnology.com>  Wed, 29 Jul 2020 16:33:25 -0500
+
 keepassrpc (1.9.0+ppa1) focal; urgency=medium
 
   * debian: fix dependency on mono-mcs
