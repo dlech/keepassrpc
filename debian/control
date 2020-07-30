@@ -5,7 +5,7 @@ Maintainer: David Lechner <david@lechnology.com>
 Build-Depends: debhelper (>= 9)
 Build-Depends-Indep: cli-common-dev (>= 0.8),
                      mono-mcs,
-                     keepass2 (>= 2.19),
+                     keepass2 (>= 2.34),
                      keepass2-plugin-dev
 Standards-Version: 3.9.7
 Homepage: http://keefox.org
