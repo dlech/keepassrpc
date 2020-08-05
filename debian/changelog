@@ -1,3 +1,11 @@
+keepassrpc (1.13.0+xenial1) xenial; urgency=medium
+
+  [ luckyrat ]
+  * Prevent reconnection using sha256('0') key
+  * Warn and highlight compromised authorised clients
+
+ -- David Lechner <david@lechnology.com>  Wed, 05 Aug 2020 10:52:54 -0500
+
 keepassrpc (1.12.1+xenial2) xenial; urgency=medium
 
   * fix build depedencies 
