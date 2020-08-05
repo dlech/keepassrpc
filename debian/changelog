@@ -1,3 +1,11 @@
+keepassrpc (1.13.0+ppa1) focal; urgency=medium
+
+  [ luckyrat ]
+  * Prevent reconnection using sha256('0') key
+  * Warn and highlight compromised authorised clients
+
+ -- David Lechner <david@lechnology.com>  Wed, 05 Aug 2020 10:54:46 -0500
+
 keepassrpc (1.12.1+ppa1) focal; urgency=medium
 
   [ luckyrat ]
